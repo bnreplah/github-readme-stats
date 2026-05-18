@@ -15,6 +15,8 @@ router.get("/pin", repoCard);
 router.get("/top-langs", langCard);
 router.get("/wakatime", wakatimeCard);
 router.get("/gist", gistCard);
+router.get("/skyline", skylineCard);
+
 
 app.use("/api", router);
 
