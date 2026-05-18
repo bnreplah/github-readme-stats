@@ -5,6 +5,7 @@ import langCard from "./api/top-langs.js";
 import wakatimeCard from "./api/wakatime.js";
 import gistCard from "./api/gist.js";
 import express from "express";
+import skylineCard from "./api/skyline.js";
 
 const app = express();
 const router = express.Router();
