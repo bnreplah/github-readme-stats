@@ -9,11 +9,9 @@
     <img alt="Tests Passing" src="https://github.com/bnreplah/github-readme-stats/workflows/Test/badge.svg" />
   </a>
   <a href="https://github.com/bnreplah/github-readme-stats/graphs/contributors">
-    <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/bnreplah/github-readme-stats" />
+    <img alt="GitHub Contributors" src="https://img.shields.io/github/contributors/anuraghazra/github-readme-stats" />
   </a>
-  <a href="https://codecov.io/gh/bnreplah/github-readme-stats">
-    <img alt="Tests Coverage" src="https://codecov.io/gh/bnreplah/github-readme-stats/branch/master/graph/badge.svg" />
-  </a>
+
   <a href="https://github.com/bnreplah/github-readme-stats/issues">
     <img alt="Issues" src="https://img.shields.io/github/issues/bnreplah/github-readme-stats?color=0088ff" />
   </a>
@@ -37,13 +35,10 @@
   ·
   <a href="https://github.com/bnreplah/github-readme-stats/issues/new?assignees=&labels=enhancement&projects=&template=feature_request.yml">Request Feature</a>
   ·
-  <a href="https://github.com/bnreplah/github-readme-stats/discussions/1770">FAQ</a>
-  ·
   <a href="https://github.com/bnreplah/github-readme-stats/discussions/new?category=q-a">Ask Question</a>
 </p>
 
 
-<p align="center">Love the project? Please consider <a href="https://www.paypal.me/bnreplah">donating</a> to help it improve!</p>
 
 <details>
 <summary>Table of contents (Click to show)</summary>
