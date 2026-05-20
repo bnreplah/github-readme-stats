@@ -9,8 +9,6 @@ import github from "@actions/github";
 import ColorContrastChecker from "color-contrast-checker";
 import { info } from "console";
 import Hjson from "hjson";
-import snakeCase from "lodash.snakecase";
-import parse from "parse-diff";
 import { inspect } from "util";
 import { isValidHexColor, isValidGradient } from "../src/common/color.js";
 import { themes } from "../themes/index.js";
@@ -19,6 +17,47 @@ import { getGithubToken, getRepoInfo } from "./helpers.js";
 const COMMENTER = "github-actions[bot]";
 
 const COMMENT_TITLE = "Automated Theme Preview";
+
+const toSnakeCase = (value) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const parseThemeDiff = (diffText) => {
+  const files = [];
+  let current = null;
+
+  for (const line of diffText.split("\n")) {
+    const fileHeaderMatch = line.match(/^\+\+\+ b\/(.+)$/);
+    if (fileHeaderMatch) {
+      if (current) {
+        files.push(current);
+      }
+      current = { to: fileHeaderMatch[1], chunks: [{ changes: [] }] };
+      continue;
+    }
+
+    if (!current) {
+      continue;
+    }
+
+    if (line.startsWith("+++ ") || line.startsWith("--- ")) {
+      continue;
+    }
+
+    if (line.startsWith("+")) {
+      current.chunks[0].changes.push({ type: "add", content: line });
+    }
+  }
+
+  if (current) {
+    files.push(current);
+  }
+
+  return files;
+};
 const THEME_PR_FAIL_TEXT = ":x: Theme PR does not adhere to our guidelines.";
 const THEME_PR_SUCCESS_TEXT =
   ":heavy_check_mark: Theme PR does adhere to our guidelines.";
@@ -423,7 +462,7 @@ export const run = async () => {
 
     // Retrieve theme changes from the PR diff.
     debug("Retrieve themes...");
-    const diff = parse(res.data);
+    const diff = parseThemeDiff(res.data);
 
     // Retrieve all theme changes from the PR diff and convert to JSON.
     debug("Retrieve theme changes...");
@@ -464,7 +503,7 @@ export const run = async () => {
         warnings.push("Theme name already taken");
         themeValid[theme] = false;
       }
-      if (themeName !== snakeCase(themeName)) {
+      if (themeName !== toSnakeCase(themeName)) {
         warnings.push("Theme name isn't in snake_case");
         themeValid[theme] = false;
       }

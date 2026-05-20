@@ -48,7 +48,7 @@ const groupIntoWeeks = (days) => {
     }
   }
 
-  if (week.length > 0) weeks.push({ contributionDays: week });
+  if (week.length > 0) {weeks.push({ contributionDays: week });}
 
   return weeks;
 };
@@ -63,7 +63,9 @@ const groupIntoWeeks = (days) => {
  * @returns {Promise<object>} Skyline data.
  */
 const fetchSkyline = async (username, year) => {
-  if (!username) throw new MissingParamError(["username"]);
+  if (!username) {
+    throw new MissingParamError(["username"]);
+  }
 
   const targetYear = parseInt(String(year), 10) || new Date().getFullYear();
 
@@ -77,7 +79,7 @@ const fetchSkyline = async (username, year) => {
   let res;
   try {
     res = await axios.get(
-      `<https://github.com/users/${encodeURIComponent(username)}/contributions`>,
+      `<https://github.com/users/${encodeURIComponent(username)}/contributions>`,
       {
         params: { from: `${targetYear}-01-01`, to: `${targetYear}-12-31` },
         headers: { "X-Requested-With": "XMLHttpRequest" },

@@ -10,10 +10,10 @@ const MONTH_LABELS = [
 ];
 
 const getContributionColor = (normalized) => {
-  if (normalized <= 0) return null;
-  if (normalized < 0.33) return "#9be9a8";
-  if (normalized < 0.66) return "#40c463";
-  if (normalized < 0.85) return "#30a14e";
+  if (normalized <= 0){ return null;}
+  if (normalized < 0.33) {return "#9be9a8";}
+  if (normalized < 0.66) {return "#40c463";}
+  if (normalized < 0.85) {return "#30a14e";}
   return "#216e39";
 };
 
@@ -68,7 +68,7 @@ const renderSkylineCard = (data, options = {}) => {
       const x = PADDING_X + weekIdx * barWidth;
       const activeDays = week.contributionDays
         .filter((d) => {
-          if (d.contributionCount <= 0) return false;
+          if (d.contributionCount <= 0) {return false;}
           const parts = d.date.split("-");
           const dateMs = Date.UTC(
             parseInt(parts[0], 10),
@@ -83,7 +83,7 @@ const renderSkylineCard = (data, options = {}) => {
         .map((day, stackIdx) => {
           const normalized = day.contributionCount / maxDayCount;
           const color = getContributionColor(normalized);
-          if (!color) return "";
+          if (!color){ return "";}
           const blockY = GROUND_Y - (stackIdx + 1) * BLOCK_UNIT;
           return `<rect x="${x.toFixed(1)}" y="${blockY}" width="${blockWidth.toFixed(1)}" height="${BLOCK_HEIGHT}" fill="${color}" rx="1" />`;
         })
@@ -96,10 +96,10 @@ const renderSkylineCard = (data, options = {}) => {
   let lastMonth = -1;
   const monthLabels = weeks
     .map((week, weekIdx) => {
-      if (!week.contributionDays.length) return "";
+      if (!week.contributionDays.length)  {"";}
       const parts = week.contributionDays[0].date.split("-");
       const month = parseInt(parts[1], 10) - 1;
-      if (month === lastMonth) return "";
+      if (month === lastMonth) {return "";}
       lastMonth = month;
       const x = PADDING_X + weekIdx * barWidth;
       return `<text x="${x.toFixed(1)}" y="${MONTH_LABEL_Y}" fill="${textColor}" font-size="9" font-family="'Segoe UI', Ubuntu, Sans-Serif" opacity="0.7">${MONTH_LABELS[month]}</text>`;
@@ -116,7 +116,7 @@ const renderSkylineCard = (data, options = {}) => {
     border_radius,
     colors: { titleColor, textColor, bgColor, borderColor },
   });
-
+//return
   card.setHideBorder(hide_border);
   card.setHideTitle(hide_title);
   card.setAccessibilityLabel({
@@ -124,14 +124,15 @@ const renderSkylineCard = (data, options = {}) => {
     desc: `Contribution skyline showing ${totalContributions} total contributions in ${year}`,
   });
 
-  if (disable_animations) card.disableAnimations();
+  if (disable_animations) {card.disableAnimations();}
 
-  return card.render(`
+  card.render(`
     ${summaryLabel}
     ${blocks}
     ${groundLine}
     ${monthLabels}
   `);
+
 };
 
 export { renderSkylineCard };

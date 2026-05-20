@@ -42,7 +42,7 @@ export default async (req, res) => {
     type: "username",
     colors: { title_color, text_color, bg_color, border_color, theme },
   });
-  if (!access.isPassed) return access.result;
+  if (!access.isPassed) {return access.result;}
 
   try {
     const data = await fetchSkyline(username, year);
