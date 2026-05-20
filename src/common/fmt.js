@@ -1,7 +1,8 @@
+/* eslint-disable no-use-before-define */
 // @ts-check
-
+//import wrap from "word-wrap";
 import { encodeHTML } from "./html.js";
-
+let wrapped = [];
 /**
  * Retrieves num with suffix k(thousands) precise to given decimal places.
  *
@@ -64,8 +65,6 @@ const wrapTextMultiline = (text, width = 59, maxLines = 3) => {
   const encoded = encodeHTML(text);
   const isChinese = encoded.includes(fullWidthComma);
 
-  
-
   if (isChinese) {
     wrapped = encoded.split(fullWidthComma); // Chinese full punctuation
   } else {
@@ -84,13 +83,18 @@ const wrapTextMultiline = (text, width = 59, maxLines = 3) => {
   return multiLineText;
 };
 
-const wrapLines = (text, width) => {
+const wrapLines = (
+  /** @type {string} */ text,
+  /** @type {number | undefined} */ width,
+) => {
   const words = text.split(/\s+/);
   const lines = [];
   let current = "";
 
   for (const word of words) {
-    if (!word) {continue;}
+    if (!word) {
+      continue;
+    }
 
     if (!current) {
       current = word;
