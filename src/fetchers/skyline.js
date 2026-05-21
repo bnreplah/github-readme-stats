@@ -1,8 +1,13 @@
 // @ts-check
 
+import axios from "axios";
 import { retryer } from "../common/retryer.js";
-import { CustomError, MissingParamError } from "../common/error.js";
 import { request } from "../common/http.js";
+import { CustomError, MissingParamError } from "../common/error.js";
+
+// ---------------------------------------------------------------------------
+// GraphQL path (used when PAT_1 is configured — optional, never required)
+// ---------------------------------------------------------------------------
 
 const CONTRIBUTION_CALENDAR_QUERY = `
   query ContributionGraph($username: String!, $from: DateTime!, $to: DateTime!) {
@@ -24,24 +29,176 @@ const CONTRIBUTION_CALENDAR_QUERY = `
   }
 `;
 
-const fetcher = (variables, token) => {
-  return request(
+const graphqlFetcher = (variables, token) =>
+  request(
     { query: CONTRIBUTION_CALENDAR_QUERY, variables },
     { Authorization: `bearer ${token}` },
   );
+
+const fetchViaGraphQL = async (username, targetYear) => {
+  const res = await retryer(graphqlFetcher, {
+    username,
+    from: `${targetYear}-01-01T00:00:00Z`,
+    to: `${targetYear}-12-31T23:59:59Z`,
+  });
+
+  if (res.data.errors) {
+    const err = res.data.errors[0];
+    throw new CustomError(
+      err.message || "GraphQL error fetching contribution data.",
+      err.type === "NOT_FOUND" ? CustomError.USER_NOT_FOUND : CustomError.GRAPHQL_ERROR,
+    );
+  }
+
+  const user = res.data.data.user;
+  const cal = user.contributionsCollection.contributionCalendar;
+
+  return {
+    name: user.name || user.login,
+    login: user.login,
+    totalContributions: cal.totalContributions,
+    weeks: cal.weeks,
+    year: targetYear,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Scraping path (no token required — parses GitHub's public profile page)
+// ---------------------------------------------------------------------------
+
+/**
+ * Parse contribution days out of GitHub's public contribution graph HTML.
+ * Handles both attribute orderings and both the old SVG rect format and
+ * the newer table-cell format GitHub has used over time.
+ */
+const parseContributionDays = (html) => {
+  const days = [];
+
+  // Pattern A: <rect data-count="N" ... data-date="YYYY-MM-DD" .../>
+  // Pattern B: <td  data-date="YYYY-MM-DD" ... data-count="N" ...>
+  const pattern =
+    /data-count="(\d+)"[^>]*?data-date="(\d{4}-\d{2}-\d{2})"|data-date="(\d{4}-\d{2}-\d{2})"[^>]*?data-count="(\d+)"/g;
+
+  let m;
+  while ((m = pattern.exec(html)) !== null) {
+    days.push({
+      contributionCount: parseInt(m[1] ?? m[4], 10),
+      date: m[2] ?? m[3],
+    });
+  }
+
+  // Fallback: newer GitHub uses aria-label="N contributions on <date>"
+  if (days.length === 0) {
+    const ariaPattern =
+      /data-date="(\d{4}-\d{2}-\d{2})"[^>]*aria-label="(\d+) contributions? on/g;
+    while ((m = ariaPattern.exec(html)) !== null) {
+      days.push({ date: m[1], contributionCount: parseInt(m[2], 10) });
+    }
+  }
+
+  return days;
 };
 
 /**
- * Fetch GitHub contribution calendar data for the skyline card.
+ * Group sorted contribution days into Sun–Sat weeks,
+ * matching GitHub's contribution calendar column layout.
+ */
+const groupIntoWeeks = (days) => {
+  const weeks = [];
+  let week = [];
+
+  for (const day of days) {
+    const [y, mo, d] = day.date.split("-").map(Number);
+    const dow = new Date(Date.UTC(y, mo - 1, d)).getUTCDay(); // 0=Sun … 6=Sat
+
+    if (week.length > 0 && dow === 0) {
+      weeks.push({ contributionDays: week });
+      week = [];
+    }
+    week.push(day);
+    if (dow === 6) {
+      weeks.push({ contributionDays: week });
+      week = [];
+    }
+  }
+
+  if (week.length > 0) weeks.push({ contributionDays: week });
+  return weeks;
+};
+
+const fetchViaScraping = async (username, targetYear) => {
+  let res;
+  try {
+    res = await axios.get(
+      `https://github.com/users/${encodeURIComponent(username)}/contributions`,
+      {
+        params: { from: `${targetYear}-01-01`, to: `${targetYear}-12-31` },
+        headers: {
+          // Use a browser-like UA so GitHub doesn't treat this as a bot request
+          "User-Agent":
+            "Mozilla/5.0 (compatible; github-readme-stats; +https://github.com/anuraghazra/github-readme-stats)",
+          Accept: "text/html,application/xhtml+xml",
+          "Accept-Language": "en-US,en;q=0.9",
+          // Tell GitHub to return just the calendar fragment
+          "X-Requested-With": "XMLHttpRequest",
+        },
+        timeout: 10000,
+        maxRedirects: 5,
+      },
+    );
+  } catch (err) {
+    const status = err.response?.status;
+    if (status === 404) {
+      throw new CustomError(
+        `User "${username}" not found.`,
+        CustomError.USER_NOT_FOUND,
+      );
+    }
+    throw new CustomError(
+      `GitHub returned HTTP ${status ?? "network error"} for ${username}'s contributions. Try adding a PAT_1 env var to use the authenticated API instead.`,
+      CustomError.GRAPHQL_ERROR,
+    );
+  }
+
+  const days = parseContributionDays(res.data);
+
+  if (days.length === 0) {
+    throw new CustomError(
+      `Could not parse contribution data for "${username}" in ${targetYear}. GitHub may have changed their HTML — try adding a PAT_1 env var.`,
+      CustomError.GRAPHQL_ERROR,
+    );
+  }
+
+  days.sort((a, b) => a.date.localeCompare(b.date));
+
+  return {
+    name: username,
+    login: username,
+    totalContributions: days.reduce((s, d) => s + d.contributionCount, 0),
+    weeks: groupIntoWeeks(days),
+    year: targetYear,
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch GitHub contribution calendar for the skyline card.
+ *
+ * Strategy:
+ *   1. If PAT_1 is set in the environment, use the authenticated GraphQL API
+ *      (most reliable, returns the user's display name).
+ *   2. Otherwise fall back to scraping GitHub's public contribution page —
+ *      no token required, nothing expires.
  *
  * @param {string} username GitHub username.
- * @param {string|number|undefined} year Year to fetch (defaults to current year).
+ * @param {string|number|undefined} year Year to display (defaults to current year).
  * @returns {Promise<object>} Skyline data.
  */
 const fetchSkyline = async (username, year) => {
-  if (!username) {
-    throw new MissingParamError(["username"]);
-  }
+  if (!username) throw new MissingParamError(["username"]);
 
   const targetYear = parseInt(String(year), 10) || new Date().getFullYear();
 
@@ -52,37 +209,12 @@ const fetchSkyline = async (username, year) => {
     );
   }
 
-  const variables = {
-    username,
-    from: `${targetYear}-01-01T00:00:00Z`,
-    to: `${targetYear}-12-31T23:59:59Z`,
-  };
-
-  const res = await retryer(fetcher, variables);
-
-  if (res.data.errors) {
-    if (res.data.errors[0].type === "NOT_FOUND") {
-      throw new CustomError(
-        res.data.errors[0].message || "Could not fetch user.",
-        CustomError.USER_NOT_FOUND,
-      );
-    }
-    throw new CustomError(
-      "Something went wrong while fetching skyline data.",
-      CustomError.GRAPHQL_ERROR,
-    );
+  // Prefer the authenticated GraphQL path when a token is available
+  if (process.env.PAT_1) {
+    return fetchViaGraphQL(username, targetYear);
   }
 
-  const user = res.data.data.user;
-  const calendar = user.contributionsCollection.contributionCalendar;
-
-  return {
-    name: user.name || user.login,
-    login: user.login,
-    totalContributions: calendar.totalContributions,
-    weeks: calendar.weeks,
-    year: targetYear,
-  };
+  return fetchViaScraping(username, targetYear);
 };
 
 export { fetchSkyline };
