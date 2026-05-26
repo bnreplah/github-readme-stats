@@ -1,0 +1,1896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataViz3D — Visual Art Engine</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #050509;
+    --surface: #0a0a14;
+    --panel: #0e0e1c;
+    --border: #1a1a30;
+    --accent1: #00f5d4;
+    --accent2: #f72585;
+    --accent3: #7209b7;
+    --accent4: #3a86ff;
+    --accent5: #ffbe0b;
+    --text: #c8d6e5;
+    --text-dim: #5a6a80;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Rajdhani', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ─── HEADER ─────────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    height: 48px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: var(--accent1);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent1);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--accent1);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .header-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+  .btn:hover { border-color: var(--accent1); color: var(--accent1); background: rgba(0,245,212,0.04); }
+  .btn.active { border-color: var(--accent1); color: var(--accent1); background: rgba(0,245,212,0.08); }
+  .btn.danger:hover { border-color: var(--accent2); color: var(--accent2); background: rgba(247,37,133,0.06); }
+
+  /* ─── LAYOUT ─────────────────────────────────────────────── */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ─── LEFT PANEL ─────────────────────────────────────────── */
+  .left-panel {
+    width: 240px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .panel-section {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    padding: 10px 14px 8px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panel-title::before {
+    content: '';
+    width: 3px; height: 10px;
+    background: var(--accent1);
+  }
+
+  .viz-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 8px 10px 12px;
+  }
+
+  .viz-btn {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 8px 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
+    text-align: center;
+    line-height: 1.4;
+    text-transform: uppercase;
+  }
+  .viz-btn:hover { border-color: var(--accent4); color: var(--accent4); background: rgba(58,134,255,0.05); }
+  .viz-btn.active { border-color: var(--accent1); color: var(--accent1); background: rgba(0,245,212,0.08); }
+
+  /* Controls */
+  .control-group {
+    padding: 6px 12px;
+  }
+  .control-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .control-label span { color: var(--accent1); }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    margin-bottom: 8px;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--accent1);
+    cursor: pointer;
+    box-shadow: 0 0 6px var(--accent1);
+  }
+
+  select {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 5px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    outline: none;
+    cursor: pointer;
+    margin-bottom: 6px;
+  }
+  select option { background: var(--surface); }
+
+  /* Color palette */
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    padding: 6px 12px 10px;
+  }
+  .palette-swatch {
+    height: 20px;
+    border-radius: 2px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.15s;
+  }
+  .palette-swatch:hover { transform: scale(1.1); border-color: #fff3; }
+  .palette-swatch.active { border-color: #fff; transform: scale(1.15); }
+
+  /* Data input area */
+  .data-area {
+    padding: 8px 12px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  textarea {
+    font-family: var(--mono);
+    font-size: 10px;
+    width: 100%;
+    flex: 1;
+    min-height: 80px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    outline: none;
+    resize: none;
+    line-height: 1.5;
+  }
+  textarea:focus { border-color: var(--accent1); }
+
+  .data-btn-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+
+  /* ─── CANVAS ──────────────────────────────────────────────── */
+  .canvas-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  canvas#c3d {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* HUD overlay */
+  .hud {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    line-height: 1.8;
+    text-align: right;
+    pointer-events: none;
+  }
+  .hud .hud-val { color: var(--accent1); }
+
+  .hud-bottom {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* Status bar */
+  .status-bar {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 24px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    gap: 20px;
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+  .status-item { display: flex; gap: 6px; }
+  .status-item span { color: var(--accent1); }
+
+  /* ─── RIGHT PANEL ─────────────────────────────────────────── */
+  .right-panel {
+    width: 200px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    flex-shrink: 0;
+  }
+
+  .fx-toggle {
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .fx-toggle:hover { background: rgba(255,255,255,0.02); }
+  .fx-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .toggle-pill {
+    width: 28px; height: 14px;
+    border-radius: 7px;
+    background: var(--border);
+    position: relative;
+    transition: background 0.2s;
+  }
+  .toggle-pill.on { background: var(--accent3); }
+  .toggle-pill::after {
+    content: '';
+    position: absolute;
+    left: 2px; top: 2px;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #fff;
+    transition: left 0.2s;
+  }
+  .toggle-pill.on::after { left: 16px; }
+
+  /* Export panel */
+  .export-section {
+    padding: 10px 12px;
+    margin-top: auto;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Drag hint */
+  .drag-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-dim);
+    text-align: center;
+    letter-spacing: 2px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .drag-hint.show { opacity: 1; }
+
+  /* Notification toast */
+  #toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--panel);
+    border: 1px solid var(--accent1);
+    color: var(--accent1);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 18px;
+    letter-spacing: 2px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 999;
+    text-transform: uppercase;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Scrollbars */
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo" id="appLogo">DataViz3D &nbsp;/&nbsp; Visual Art Engine v1.0</div>
+  <div class="header-controls">
+    <button class="btn" id="btnAutoRotate">⟳ Rotate</button>
+    <button class="btn" id="btnRandom">⚡ Random</button>
+    <button class="btn" id="btnExportPNG">↓ PNG</button>
+    <button class="btn danger" id="btnReset">✕ Reset</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Viz Type -->
+    <div class="panel-section">
+      <div class="panel-title">Visualization</div>
+      <div class="viz-grid">
+        <button class="viz-btn active" data-viz="scatter3d">Scatter 3D</button>
+        <button class="viz-btn" data-viz="bars3d">Bar Forest</button>
+        <button class="viz-btn" data-viz="surface">Surface</button>
+        <button class="viz-btn" data-viz="helix">DNA Helix</button>
+        <button class="viz-btn" data-viz="network">Network</button>
+        <button class="viz-btn" data-viz="particles">Particles</button>
+        <button class="viz-btn" data-viz="spiral">Spiral</button>
+        <button class="viz-btn" data-viz="terrain">Terrain</button>
+        <button class="viz-btn" data-viz="constellation">Constel.</button>
+        <button class="viz-btn" data-viz="voxels">Voxels</button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="panel-section">
+      <div class="panel-title">Parameters</div>
+      <div class="control-group">
+        <div class="control-label">Point Size <span id="lblSize">4</span></div>
+        <input type="range" id="ctrlSize" min="1" max="20" value="4">
+        <div class="control-label">Count <span id="lblCount">300</span></div>
+        <input type="range" id="ctrlCount" min="10" max="2000" value="300">
+        <div class="control-label">Speed <span id="lblSpeed">1.0</span></div>
+        <input type="range" id="ctrlSpeed" min="0" max="50" value="10">
+        <div class="control-label">Spread <span id="lblSpread">5.0</span></div>
+        <input type="range" id="ctrlSpread" min="1" max="20" value="10">
+        <div class="control-label">ColorMode</div>
+        <select id="ctrlColorMode">
+          <option value="palette">Palette</option>
+          <option value="depth">Depth Map</option>
+          <option value="velocity">Velocity</option>
+          <option value="index">Index</option>
+          <option value="rainbow">Rainbow</option>
+          <option value="mono">Monochrome</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Palette -->
+    <div class="panel-section">
+      <div class="panel-title">Color Palette</div>
+      <div class="palette-grid" id="paletteGrid"></div>
+    </div>
+
+    <!-- Data -->
+    <div class="panel-section" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+      <div class="panel-title">Data Input</div>
+      <div class="data-area">
+        <textarea id="dataInput" placeholder="Paste CSV, JSON array, or plain numbers...&#10;&#10;CSV: x,y,z per row&#10;JSON: [[x,y,z],...]&#10;Numbers: one per line"></textarea>
+        <div class="data-btn-row">
+          <button class="btn" id="btnLoadData">Load</button>
+          <button class="btn" id="btnGenData">Generate</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrap" id="canvasWrap">
+    <canvas id="c3d"></canvas>
+    <div class="hud" id="hud">
+      <div>Points <span class="hud-val" id="hudPoints">0</span></div>
+      <div>FPS <span class="hud-val" id="hudFPS">0</span></div>
+      <div>Zoom <span class="hud-val" id="hudZoom">1.0</span></div>
+      <div>θX <span class="hud-val" id="hudRotX">0°</span></div>
+      <div>θY <span class="hud-val" id="hudRotY">0°</span></div>
+    </div>
+    <div class="hud-bottom">drag to rotate · scroll to zoom · shift+drag to pan</div>
+    <div class="status-bar">
+      <div class="status-item">VIZ <span id="stViz">scatter3d</span></div>
+      <div class="status-item">PALETTE <span id="stPalette">Cyber</span></div>
+      <div class="status-item">RENDERER <span id="stRenderer">Canvas2D/3D Engine</span></div>
+      <div class="status-item">FRAME <span id="stFrame">0</span></div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="panel-title">FX / Post-Process</div>
+
+    <div class="fx-toggle" data-fx="bloom">
+      <div class="fx-label">Bloom Glow</div>
+      <div class="toggle-pill on" id="fxBloom"></div>
+    </div>
+    <div class="fx-toggle" data-fx="trails">
+      <div class="fx-label">Motion Trails</div>
+      <div class="toggle-pill" id="fxTrails"></div>
+    </div>
+    <div class="fx-toggle" data-fx="grid">
+      <div class="fx-label">Grid Floor</div>
+      <div class="toggle-pill on" id="fxGrid"></div>
+    </div>
+    <div class="fx-toggle" data-fx="axes">
+      <div class="fx-label">Axes</div>
+      <div class="toggle-pill on" id="fxAxes"></div>
+    </div>
+    <div class="fx-toggle" data-fx="scanlines">
+      <div class="fx-label">Scanlines</div>
+      <div class="toggle-pill" id="fxScanlines"></div>
+    </div>
+    <div class="fx-toggle" data-fx="connect">
+      <div class="fx-label">Connect Lines</div>
+      <div class="toggle-pill" id="fxConnect"></div>
+    </div>
+    <div class="fx-toggle" data-fx="labels">
+      <div class="fx-label">Data Labels</div>
+      <div class="toggle-pill" id="fxLabels"></div>
+    </div>
+    <div class="fx-toggle" data-fx="fog">
+      <div class="fx-label">Depth Fog</div>
+      <div class="toggle-pill on" id="fxFog"></div>
+    </div>
+    <div class="fx-toggle" data-fx="pulse">
+      <div class="fx-label">Pulse Anim</div>
+      <div class="toggle-pill on" id="fxPulse"></div>
+    </div>
+    <div class="fx-toggle" data-fx="wireframe">
+      <div class="fx-label">Wireframe</div>
+      <div class="toggle-pill" id="fxWireframe"></div>
+    </div>
+
+    <div class="panel-section" style="padding:10px 12px;">
+      <div class="panel-title" style="padding:0 0 8px;">Projection</div>
+      <select id="ctrlProjection">
+        <option value="perspective">Perspective</option>
+        <option value="orthographic">Orthographic</option>
+        <option value="isometric">Isometric</option>
+      </select>
+    </div>
+
+    <div class="panel-section" style="padding:10px 12px;">
+      <div class="panel-title" style="padding:0 0 8px;">Background</div>
+      <select id="ctrlBg">
+        <option value="dark">Deep Space</option>
+        <option value="void">Void Black</option>
+        <option value="nebula">Nebula</option>
+        <option value="grid_bg">Grid Room</option>
+        <option value="gradient">Gradient</option>
+      </select>
+    </div>
+
+    <div class="export-section">
+      <div class="panel-title" style="padding:0 0 8px;">Export</div>
+      <button class="btn" id="btnExportSVG" style="width:100%;margin-bottom:5px;">↓ SVG Frame</button>
+      <button class="btn" id="btnExportJSON" style="width:100%;">↓ Data JSON</button>
+    </div>
+
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════════
+// DataViz3D — Pure JS/Canvas 3D Data Visualization & Art Engine
+// Zero dependencies · Self-contained · CSP-safe
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Server-injected config (null when used standalone)
+const __CONFIG__ = null; /* __DATAVIZ_CONFIG__ */
+
+const DataViz3D = (() => {
+
+  // ── State ──────────────────────────────────────────────────────────────────
+  const state = {
+    vizType: 'scatter3d',
+    points: [],
+    rawData: [],
+    rotX: 0.4,
+    rotY: 0.3,
+    rotZ: 0,
+    zoom: 1,
+    panX: 0,
+    panY: 0,
+    autoRotate: false,
+    autoRotateSpeed: 0.005,
+    frame: 0,
+    fps: 0,
+    lastTime: 0,
+    fpsHistory: [],
+    params: {
+      size: 4,
+      count: 300,
+      speed: 1.0,
+      spread: 5.0,
+      colorMode: 'palette',
+      projection: 'perspective',
+      bg: 'dark',
+    },
+    fx: {
+      bloom: true,
+      trails: false,
+      grid: true,
+      axes: true,
+      scanlines: false,
+      connect: false,
+      labels: false,
+      fog: true,
+      pulse: true,
+      wireframe: false,
+    },
+    activePalette: 0,
+    mouse: { down: false, last: {x:0,y:0}, shift: false },
+    animVals: {},   // per-point animation offsets
+  };
+
+  // ── Palettes ───────────────────────────────────────────────────────────────
+  const PALETTES = [
+    { name: 'Cyber',      colors: ['#00f5d4','#7209b7','#f72585','#3a86ff','#ffbe0b','#06d6a0'] },
+    { name: 'Inferno',    colors: ['#ff006e','#fb5607','#ffbe0b','#8338ec','#ff006e','#3a86ff'] },
+    { name: 'Ocean',      colors: ['#03045e','#0077b6','#00b4d8','#90e0ef','#caf0f8','#48cae4'] },
+    { name: 'Forest',     colors: ['#081c15','#1b4332','#2d6a4f','#52b788','#95d5b2','#d8f3dc'] },
+    { name: 'Lava',       colors: ['#370617','#6a040f','#d00000','#e85d04','#f48c06','#faa307'] },
+    { name: 'Neon',       colors: ['#ff00ff','#00ffff','#ff9900','#00ff00','#ff0044','#9b00ff'] },
+    { name: 'Pastel',     colors: ['#ffadad','#ffd6a5','#fdffb6','#caffbf','#9bf6ff','#bdb2ff'] },
+    { name: 'Monochrome', colors: ['#ffffff','#cccccc','#999999','#666666','#333333','#111111'] },
+    { name: 'Gold',       colors: ['#bf9b30','#d4af37','#f5e663','#a67c00','#ffdc5e','#c8960c'] },
+    { name: 'Blood',      colors: ['#200010','#6b0018','#a30030','#cc0044','#ff1166','#ff6699'] },
+  ];
+
+  // ── Canvas setup ───────────────────────────────────────────────────────────
+  const canvas = document.getElementById('c3d');
+  const wrap   = document.getElementById('canvasWrap');
+  let ctx, W, H, CX, CY;
+
+  function resize() {
+    // Subtract status-bar height
+    W = wrap.clientWidth;
+    H = wrap.clientHeight - 24;
+    canvas.width  = W;
+    canvas.height = H;
+    CX = W / 2 + state.panX;
+    CY = H / 2 + state.panY;
+  }
+
+  // ── Math helpers ──────────────────────────────────────────────────────────
+  const m3 = {
+    rotX: (p, a) => {
+      const c=Math.cos(a), s=Math.sin(a);
+      return [p[0], p[1]*c - p[2]*s, p[1]*s + p[2]*c];
+    },
+    rotY: (p, a) => {
+      const c=Math.cos(a), s=Math.sin(a);
+      return [p[0]*c + p[2]*s, p[1], -p[0]*s + p[2]*c];
+    },
+    rotZ: (p, a) => {
+      const c=Math.cos(a), s=Math.sin(a);
+      return [p[0]*c - p[1]*s, p[0]*s + p[1]*c, p[2]];
+    },
+  };
+
+  function project(p3) {
+    let [x, y, z] = p3;
+    const fov   = 500 * state.zoom;
+    const proj  = state.params.projection;
+
+    if (proj === 'perspective') {
+      const d = fov + z * 80;
+      if (d <= 0) return null;
+      const scale = fov / d;
+      return { x: CX + x * scale * 60, y: CY - y * scale * 60, z, scale };
+    } else if (proj === 'orthographic') {
+      const s = state.zoom * 55;
+      return { x: CX + x * s, y: CY - y * s, z, scale: state.zoom };
+    } else { // isometric
+      const s = state.zoom * 45;
+      const ix = (x - z) * Math.cos(Math.PI/6) * s;
+      const iy = (x + z) * Math.sin(Math.PI/6) * s - y * s;
+      return { x: CX + ix, y: CY + iy, z, scale: state.zoom };
+    }
+  }
+
+  function transform(p3) {
+    let p = [...p3];
+    p = m3.rotX(p, state.rotX);
+    p = m3.rotY(p, state.rotY);
+    p = m3.rotZ(p, state.rotZ);
+    return p;
+  }
+
+  // ── Data generation ────────────────────────────────────────────────────────
+  function generateData(type, count, spread) {
+    const pts = [];
+    const s = spread;
+    const tau = Math.PI * 2;
+
+    const gen = {
+      scatter3d: () => {
+        for (let i = 0; i < count; i++) {
+          pts.push({
+            x: (Math.random()*2-1)*s,
+            y: (Math.random()*2-1)*s,
+            z: (Math.random()*2-1)*s,
+            v: Math.random(), // value 0-1 for coloring
+            i,
+          });
+        }
+      },
+      bars3d: () => {
+        const cols = Math.ceil(Math.sqrt(count));
+        const rows = Math.ceil(count / cols);
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            if (pts.length >= count) break;
+            const nx = (c / cols * 2 - 1) * s;
+            const nz = (r / rows * 2 - 1) * s;
+            const h  = (Math.sin(nx * 1.5) * Math.cos(nz * 1.5) + 1) * 0.5;
+            pts.push({ x: nx, y: 0, z: nz, h, v: h, i: pts.length, barBase: -s * 0.1 });
+          }
+        }
+      },
+      surface: () => {
+        const res = Math.ceil(Math.sqrt(count));
+        for (let r = 0; r < res; r++) {
+          for (let c = 0; c < res; c++) {
+            const nx = (c / res * 2 - 1) * s;
+            const nz = (r / res * 2 - 1) * s;
+            const d  = Math.sqrt(nx*nx + nz*nz);
+            const ny = Math.sin(d * 1.5) * (s * 0.5) * Math.exp(-d * 0.15);
+            pts.push({ x: nx, y: ny, z: nz, v: (ny / s + 0.5), i: pts.length });
+          }
+        }
+      },
+      helix: () => {
+        const turns = 5;
+        for (let i = 0; i < count; i++) {
+          const t   = (i / count) * turns * tau;
+          const r2  = s * 0.7;
+          const y   = (i / count * 2 - 1) * s;
+          pts.push({ x: Math.cos(t) * r2, y, z: Math.sin(t) * r2, v: i/count, strand: 0, i });
+          if (i % 2 === 0) {
+            pts.push({ x: Math.cos(t + Math.PI) * r2, y, z: Math.sin(t + Math.PI) * r2, v: i/count, strand: 1, i: i + 0.5 });
+          }
+        }
+      },
+      network: () => {
+        const nodes = Math.min(count, 80);
+        for (let i = 0; i < nodes; i++) {
+          const theta = Math.random() * tau;
+          const phi   = Math.acos(2 * Math.random() - 1);
+          const r     = Math.random() * s;
+          pts.push({
+            x: r * Math.sin(phi) * Math.cos(theta),
+            y: r * Math.cos(phi),
+            z: r * Math.sin(phi) * Math.sin(theta),
+            v: Math.random(),
+            connections: Math.floor(Math.random() * 3) + 1,
+            i,
+          });
+        }
+      },
+      particles: () => {
+        for (let i = 0; i < count; i++) {
+          const theta = Math.random() * tau;
+          const phi   = Math.acos(2 * Math.random() - 1);
+          const r     = Math.pow(Math.random(), 0.5) * s;
+          pts.push({
+            x: r * Math.sin(phi) * Math.cos(theta),
+            y: r * Math.cos(phi),
+            z: r * Math.sin(phi) * Math.sin(theta),
+            vx: (Math.random()-0.5) * 0.02,
+            vy: (Math.random()-0.5) * 0.02,
+            vz: (Math.random()-0.5) * 0.02,
+            v: Math.random(),
+            i,
+          });
+        }
+      },
+      spiral: () => {
+        const arms  = 3;
+        const turns = 3;
+        for (let i = 0; i < count; i++) {
+          const arm   = i % arms;
+          const tAngle = (i / count) * turns * tau;
+          const r     = (i / count) * s;
+          const angle = tAngle + (arm * tau / arms);
+          const noise = (Math.random() - 0.5) * s * 0.15;
+          pts.push({
+            x: Math.cos(angle) * r + noise,
+            y: (Math.random() - 0.5) * s * 0.15,
+            z: Math.sin(angle) * r + noise,
+            v: i / count,
+            arm, i,
+          });
+        }
+      },
+      terrain: () => {
+        // Diamond-square-like noise field
+        const res = Math.ceil(Math.sqrt(count));
+        const hmap = [];
+        for (let r = 0; r <= res; r++) {
+          hmap[r] = [];
+          for (let c = 0; c <= res; c++) {
+            const nx = c / res * 4;
+            const nz = r / res * 4;
+            hmap[r][c] =
+              Math.sin(nx*1.1) * Math.cos(nz*0.9) * 0.5 +
+              Math.sin(nx*2.3 + 0.5) * Math.cos(nz*2.1) * 0.25 +
+              Math.sin(nx*4.7 + 1.2) * Math.cos(nz*4.3) * 0.125 +
+              Math.sin(nx*9.1) * Math.cos(nz*8.7) * 0.0625;
+          }
+        }
+        for (let r = 0; r < res; r++) {
+          for (let c = 0; c < res; c++) {
+            const nx = (c / res * 2 - 1) * s;
+            const nz = (r / res * 2 - 1) * s;
+            const ny = hmap[r][c] * s * 0.8;
+            pts.push({ x: nx, y: ny, z: nz, v: (ny / s + 0.5) * 0.5 + 0.25, r, c, i: pts.length });
+          }
+        }
+      },
+      constellation: () => {
+        for (let i = 0; i < count; i++) {
+          const phi   = Math.acos(2 * Math.random() - 1);
+          const theta = Math.random() * tau;
+          const r     = s * (0.7 + Math.random() * 0.3);
+          pts.push({
+            x: r * Math.sin(phi) * Math.cos(theta),
+            y: r * Math.cos(phi),
+            z: r * Math.sin(phi) * Math.sin(theta),
+            bright: Math.random(),
+            v: Math.random(),
+            i,
+          });
+        }
+      },
+      voxels: () => {
+        const res = Math.ceil(Math.cbrt(count));
+        outer: for (let x = 0; x < res; x++) {
+          for (let y = 0; y < res; y++) {
+            for (let z2 = 0; z2 < res; z2++) {
+              if (pts.length >= count) break outer;
+              const nx = (x / res * 2 - 1) * s;
+              const ny = (y / res * 2 - 1) * s;
+              const nz = (z2 / res * 2 - 1) * s;
+              const d  = Math.sqrt(nx*nx + ny*ny + nz*nz);
+              if (Math.random() < Math.exp(-d * 0.3)) {
+                pts.push({ x: nx, y: ny, z: nz, v: 1 - d / (s * 1.73), i: pts.length });
+              }
+            }
+          }
+        }
+      },
+    };
+
+    if (gen[type]) gen[type]();
+
+    // Attach animation offsets
+    pts.forEach((p, i) => {
+      p.animOffset = Math.random() * Math.PI * 2;
+      p.animSpeed  = 0.5 + Math.random() * 1.5;
+    });
+
+    return pts;
+  }
+
+  // ── Color system ───────────────────────────────────────────────────────────
+  function hexToRGB(hex) {
+    const r = parseInt(hex.slice(1,3),16);
+    const g = parseInt(hex.slice(3,5),16);
+    const b = parseInt(hex.slice(5,7),16);
+    return [r, g, b];
+  }
+
+  function lerpColor(c1, c2, t) {
+    return [
+      Math.round(c1[0] + (c2[0]-c1[0]) * t),
+      Math.round(c1[1] + (c2[1]-c1[1]) * t),
+      Math.round(c1[2] + (c2[2]-c1[2]) * t),
+    ];
+  }
+
+  function samplePalette(t, palette) {
+    const colors = palette.colors.map(hexToRGB);
+    const seg = t * (colors.length - 1);
+    const i   = Math.floor(seg);
+    const f   = seg - i;
+    return lerpColor(colors[Math.min(i, colors.length-2)], colors[Math.min(i+1, colors.length-1)], f);
+  }
+
+  function getColor(point, idx, total, palette, mode, t) {
+    let val;
+    if (mode === 'palette')   val = point.v ?? (idx / total);
+    else if (mode === 'depth') val = (point.z + 10) / 20;
+    else if (mode === 'velocity') val = Math.sqrt((point.vx||0)**2 + (point.vy||0)**2 + (point.vz||0)**2) * 50;
+    else if (mode === 'index') val = idx / total;
+    else if (mode === 'rainbow') val = ((idx / total) + t * 0.1) % 1;
+    else if (mode === 'mono')  val = 0.8;
+    else val = point.v ?? 0.5;
+    val = Math.max(0, Math.min(1, val));
+    return samplePalette(val, palette);
+  }
+
+  // ── Background rendering ────────────────────────────────────────────────────
+  function drawBackground(bg) {
+    ctx.save();
+    if (bg === 'void') {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, W, H);
+    } else if (bg === 'dark') {
+      ctx.fillStyle = '#050509';
+      ctx.fillRect(0, 0, W, H);
+      // subtle star field
+      ctx.fillStyle = 'rgba(255,255,255,0.3)';
+      for (let i = 0; i < 120; i++) {
+        const sx = (((i * 9301 + 49297) % 233280) / 233280) * W;
+        const sy = (((i * 7351 + 31337) % 233280) / 233280) * H;
+        ctx.fillRect(sx, sy, 0.8, 0.8);
+      }
+    } else if (bg === 'nebula') {
+      const grd = ctx.createRadialGradient(W*0.3, H*0.4, 0, W*0.5, H*0.5, W*0.8);
+      grd.addColorStop(0, '#0d0030');
+      grd.addColorStop(0.3, '#050028');
+      grd.addColorStop(0.7, '#02001a');
+      grd.addColorStop(1, '#000010');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, W, H);
+    } else if (bg === 'grid_bg') {
+      ctx.fillStyle = '#030308';
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#0d0d20';
+      ctx.lineWidth = 0.5;
+      const gs = 40;
+      for (let x = 0; x < W; x += gs) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+      }
+      for (let y = 0; y < H; y += gs) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      }
+    } else if (bg === 'gradient') {
+      const grd = ctx.createLinearGradient(0, 0, W, H);
+      grd.addColorStop(0, '#070018');
+      grd.addColorStop(0.5, '#001020');
+      grd.addColorStop(1, '#100008');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, W, H);
+    }
+    ctx.restore();
+  }
+
+  // ── Grid floor ──────────────────────────────────────────────────────────────
+  function drawGrid() {
+    const size  = 6;
+    const steps = 12;
+    const pal   = PALETTES[state.activePalette];
+    const gc    = hexToRGB(pal.colors[0]);
+
+    for (let i = -steps; i <= steps; i++) {
+      const lineColor = `rgba(${gc[0]},${gc[1]},${gc[2]},${i === 0 ? 0.25 : 0.07})`;
+      // along X
+      const a3 = transform([i * (size/steps), -size*0.5, -size]);
+      const b3 = transform([i * (size/steps), -size*0.5,  size]);
+      const ap = project(a3);
+      const bp = project(b3);
+      if (ap && bp) {
+        ctx.beginPath();
+        ctx.moveTo(ap.x, ap.y);
+        ctx.lineTo(bp.x, bp.y);
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth   = i === 0 ? 1 : 0.5;
+        ctx.stroke();
+      }
+      // along Z
+      const c3 = transform([-size, -size*0.5, i * (size/steps)]);
+      const d3 = transform([ size, -size*0.5, i * (size/steps)]);
+      const cp = project(c3);
+      const dp = project(d3);
+      if (cp && dp) {
+        ctx.beginPath();
+        ctx.moveTo(cp.x, cp.y);
+        ctx.lineTo(dp.x, dp.y);
+        ctx.strokeStyle = lineColor;
+        ctx.lineWidth   = i === 0 ? 1 : 0.5;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // ── Axes ────────────────────────────────────────────────────────────────────
+  function drawAxes() {
+    const L = 6;
+    const axes = [
+      { end: [L,0,0], color: '#ff4444', label: 'X' },
+      { end: [0,L,0], color: '#44ff44', label: 'Y' },
+      { end: [0,0,L], color: '#4488ff', label: 'Z' },
+    ];
+    axes.forEach(ax => {
+      const op  = project(transform([0,0,0]));
+      const ep  = project(transform(ax.end));
+      if (!op || !ep) return;
+      ctx.beginPath();
+      ctx.moveTo(op.x, op.y);
+      ctx.lineTo(ep.x, ep.y);
+      ctx.strokeStyle = ax.color + '88';
+      ctx.lineWidth   = 1;
+      ctx.stroke();
+      ctx.fillStyle   = ax.color + 'bb';
+      ctx.font        = '10px Share Tech Mono, monospace';
+      ctx.fillText(ax.label, ep.x + 4, ep.y + 4);
+    });
+  }
+
+  // ── Bloom effect (shadow approximation) ────────────────────────────────────
+  function drawGlowPoint(x, y, r, color, alpha) {
+    if (r <= 0) return;
+    const [cr, cg, cb] = color;
+    const layers = [[r*4, 0.04], [r*2.5, 0.08], [r*1.5, 0.14]];
+    layers.forEach(([lr, la]) => {
+      if (lr <= 0) return;
+      try {
+        const g = ctx.createRadialGradient(x, y, 0, x, y, lr);
+        g.addColorStop(0, `rgba(${cr},${cg},${cb},${la * alpha})`);
+        g.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+        ctx.beginPath();
+        ctx.arc(x, y, lr, 0, Math.PI * 2);
+        ctx.fillStyle = g;
+        ctx.fill();
+      } catch(e) {}
+    });
+  }
+
+  // ── Main drawers per viz type ───────────────────────────────────────────────
+  const drawers = {
+
+    scatter3d(pts, palette, t) {
+      const sorted = pts.map((p, i) => ({ p, i }))
+        .map(({ p, i }) => {
+          const p3   = transform([p.x, p.y, p.z]);
+          const proj = project(p3);
+          return { p, i, p3, proj };
+        })
+        .filter(d => d.proj)
+        .sort((a, b) => a.p3[2] - b.p3[2]);
+
+      // Connect lines
+      if (state.fx.connect) {
+        const MAX_DIST = state.params.spread * 0.4;
+        for (let i = 0; i < sorted.length; i++) {
+          for (let j = i+1; j < Math.min(sorted.length, i+8); j++) {
+            const dx = sorted[i].p.x - sorted[j].p.x;
+            const dy = sorted[i].p.y - sorted[j].p.y;
+            const dz = sorted[i].p.z - sorted[j].p.z;
+            const d  = Math.sqrt(dx*dx+dy*dy+dz*dz);
+            if (d < MAX_DIST) {
+              const [cr,cg,cb] = getColor(sorted[i].p, sorted[i].i, pts.length, palette, state.params.colorMode, t);
+              ctx.beginPath();
+              ctx.moveTo(sorted[i].proj.x, sorted[i].proj.y);
+              ctx.lineTo(sorted[j].proj.x, sorted[j].proj.y);
+              ctx.strokeStyle = `rgba(${cr},${cg},${cb},${0.08 * (1 - d/MAX_DIST)})`;
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      sorted.forEach(({ p, i, p3, proj }) => {
+        const fogA = state.fx.fog ? Math.max(0.1, 1 - Math.abs(p3[2]) / (state.params.spread * 2)) : 1;
+        const pulA = state.fx.pulse ? (0.7 + 0.3 * Math.sin(t * p.animSpeed + p.animOffset)) : 1;
+        const col  = getColor(p, i, pts.length, palette, state.params.colorMode, t);
+        const sz   = state.params.size * proj.scale * pulA * 0.5;
+
+        if (state.fx.bloom) drawGlowPoint(proj.x, proj.y, sz, col, fogA * 0.5);
+
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, Math.max(0.5, sz), 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA})`;
+        ctx.fill();
+
+        if (state.fx.labels && i < 30) {
+          ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.6)`;
+          ctx.font      = '8px Share Tech Mono, monospace';
+          ctx.fillText(`${i}`, proj.x + sz + 2, proj.y + 3);
+        }
+      });
+    },
+
+    bars3d(pts, palette, t) {
+      const sp = state.params.spread;
+      const sorted = pts.map((p, i) => {
+        const barH    = p.h * sp * 1.5;
+        const pulse   = state.fx.pulse ? (0.9 + 0.1 * Math.sin(t * 1.5 + p.animOffset)) : 1;
+        const t3top   = transform([p.x, barH * pulse, p.z]);
+        const t3bot   = transform([p.x, -sp * 0.1,    p.z]);
+        return { p, i, t3bot, ptop: project(t3top), pbot: project(t3bot) };
+      })
+      .filter(d => d.ptop && d.pbot)
+      .sort((a, b) => a.t3bot[2] - b.t3bot[2]);
+
+      sorted.forEach(({ p, i, ptop, pbot }) => {
+        const col   = getColor(p, i, pts.length, palette, state.params.colorMode, t);
+        const w     = Math.max(2, state.params.size * ptop.scale * 1.5);
+        const fogA  = state.fx.fog ? Math.max(0.15, 1 - Math.abs(p.z) / (sp * 2)) : 1;
+
+        if (state.fx.wireframe) {
+          ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA})`;
+          ctx.lineWidth   = 0.5;
+          ctx.strokeRect(ptop.x - w/2, ptop.y, w, Math.max(1, pbot.y - ptop.y));
+        } else {
+          const barH = Math.max(1, pbot.y - ptop.y);
+          let fillStyle;
+          try {
+            const grad = ctx.createLinearGradient(ptop.x, ptop.y, ptop.x, ptop.y + barH);
+            grad.addColorStop(0, `rgba(${col[0]},${col[1]},${col[2]},${fogA})`);
+            grad.addColorStop(1, `rgba(${Math.round(col[0]*0.3)},${Math.round(col[1]*0.3)},${Math.round(col[2]*0.3)},${fogA * 0.4})`);
+            fillStyle = grad;
+          } catch(e) {
+            fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA})`;
+          }
+          ctx.fillStyle = fillStyle;
+          ctx.fillRect(ptop.x - w/2, ptop.y, w, barH);
+        }
+
+        if (state.fx.bloom) drawGlowPoint(ptop.x, ptop.y, w, col, fogA * 0.4);
+      });
+    },
+
+    surface(pts, palette, t) {
+      const res = Math.ceil(Math.sqrt(pts.length));
+      // draw quads
+      for (let r = 0; r < res-1; r++) {
+        for (let c = 0; c < res-1; c++) {
+          const idx = r * res + c;
+          if (idx + res + 1 >= pts.length) continue;
+          const a = pts[idx],   b = pts[idx+1];
+          const d = pts[idx+res], e = pts[idx+res+1];
+
+          const ap = project(transform([a.x, a.y, a.z]));
+          const bp = project(transform([b.x, b.y, b.z]));
+          const dp = project(transform([d.x, d.y, d.z]));
+          const ep = project(transform([e.x, e.y, e.z]));
+          if (!ap || !bp || !dp || !ep) continue;
+
+          const avgV = (a.v + b.v + d.v + e.v) / 4;
+          const col  = samplePalette(avgV, palette);
+
+          if (state.fx.wireframe) {
+            ctx.beginPath();
+            ctx.moveTo(ap.x, ap.y); ctx.lineTo(bp.x, bp.y);
+            ctx.lineTo(ep.x, ep.y); ctx.lineTo(dp.x, dp.y);
+            ctx.closePath();
+            ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.5)`;
+            ctx.lineWidth   = 0.5;
+            ctx.stroke();
+          } else {
+            ctx.beginPath();
+            ctx.moveTo(ap.x, ap.y); ctx.lineTo(bp.x, bp.y);
+            ctx.lineTo(ep.x, ep.y); ctx.lineTo(dp.x, dp.y);
+            ctx.closePath();
+            ctx.fillStyle   = `rgba(${col[0]},${col[1]},${col[2]},0.7)`;
+            ctx.fill();
+            ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.1)`;
+            ctx.lineWidth   = 0.3;
+            ctx.stroke();
+          }
+        }
+      }
+    },
+
+    helix(pts, palette, t) {
+      // Draw strands
+      const strand0 = pts.filter(p => p.strand === 0).sort((a,b) => a.i - b.i);
+      const strand1 = pts.filter(p => p.strand === 1).sort((a,b) => a.i - b.i);
+
+      [strand0, strand1].forEach((strand, si) => {
+        for (let i = 1; i < strand.length; i++) {
+          const pp = project(transform([strand[i-1].x, strand[i-1].y, strand[i-1].z]));
+          const cp = project(transform([strand[i].x,   strand[i].y,   strand[i].z]));
+          if (!pp || !cp) continue;
+          const col = samplePalette(strand[i].v, palette);
+          ctx.beginPath();
+          ctx.moveTo(pp.x, pp.y);
+          ctx.lineTo(cp.x, cp.y);
+          ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.6)`;
+          ctx.lineWidth   = 1.5;
+          ctx.stroke();
+        }
+      });
+
+      // Rungs between strands
+      const minLen = Math.min(strand0.length, strand1.length);
+      for (let i = 0; i < minLen; i += 3) {
+        const ap = project(transform([strand0[i].x, strand0[i].y, strand0[i].z]));
+        const bp = project(transform([strand1[i].x, strand1[i].y, strand1[i].z]));
+        if (!ap || !bp) continue;
+        const col = samplePalette(strand0[i].v, palette);
+        ctx.beginPath();
+        ctx.moveTo(ap.x, ap.y);
+        ctx.lineTo(bp.x, bp.y);
+        ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.25)`;
+        ctx.lineWidth   = 0.8;
+        ctx.stroke();
+      }
+
+      // Points on strands
+      pts.forEach((p, i) => {
+        const pp  = project(transform([p.x, p.y, p.z]));
+        if (!pp) return;
+        const col = getColor(p, i, pts.length, palette, state.params.colorMode, t);
+        const sz  = state.params.size * pp.scale * 0.5;
+        if (state.fx.bloom) drawGlowPoint(pp.x, pp.y, sz, col, 0.7);
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, Math.max(0.5, sz), 0, Math.PI*2);
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.9)`;
+        ctx.fill();
+      });
+    },
+
+    network(pts, palette, t) {
+      // Edges
+      const MAX_DIST = state.params.spread * 0.8;
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i+1; j < pts.length; j++) {
+          const dx = pts[i].x - pts[j].x;
+          const dy = pts[i].y - pts[j].y;
+          const dz = pts[i].z - pts[j].z;
+          const d  = Math.sqrt(dx*dx+dy*dy+dz*dz);
+          if (d < MAX_DIST) {
+            const ap = project(transform([pts[i].x, pts[i].y, pts[i].z]));
+            const bp = project(transform([pts[j].x, pts[j].y, pts[j].z]));
+            if (!ap || !bp) continue;
+            const col = samplePalette(pts[i].v, palette);
+            ctx.beginPath();
+            ctx.moveTo(ap.x, ap.y);
+            ctx.lineTo(bp.x, bp.y);
+            ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.12 * (1 - d/MAX_DIST)})`;
+            ctx.lineWidth   = 0.7;
+            ctx.stroke();
+          }
+        }
+      }
+      // Nodes
+      pts.forEach((p, i) => {
+        const pp  = project(transform([p.x, p.y, p.z]));
+        if (!pp) return;
+        const col = getColor(p, i, pts.length, palette, state.params.colorMode, t);
+        const sz  = (state.params.size + p.connections * 1.5) * pp.scale * 0.5;
+        const pul = state.fx.pulse ? (0.8 + 0.2 * Math.sin(t * p.animSpeed + p.animOffset)) : 1;
+        if (state.fx.bloom) drawGlowPoint(pp.x, pp.y, sz * pul, col, 0.6);
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, Math.max(1, sz * pul), 0, Math.PI*2);
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.9)`;
+        ctx.fill();
+        if (state.fx.labels) {
+          ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.5)`;
+          ctx.font      = '8px Share Tech Mono, monospace';
+          ctx.fillText(`N${i}`, pp.x + sz + 2, pp.y + 3);
+        }
+      });
+    },
+
+    particles(pts, palette, t) {
+      // Update particle positions
+      pts.forEach(p => {
+        p.x += p.vx * state.params.speed;
+        p.y += p.vy * state.params.speed;
+        p.z += p.vz * state.params.speed;
+        const sp = state.params.spread;
+        if (Math.abs(p.x) > sp) p.vx *= -1;
+        if (Math.abs(p.y) > sp) p.vy *= -1;
+        if (Math.abs(p.z) > sp) p.vz *= -1;
+      });
+
+      const sorted = pts.map((p, i) => {
+        const p3   = transform([p.x, p.y, p.z]);
+        const proj = project(p3);
+        return { p, i, p3, proj };
+      }).filter(d => d.proj).sort((a, b) => a.p3[2] - b.p3[2]);
+
+      if (state.fx.connect) {
+        const MAX = state.params.spread * 0.5;
+        for (let i = 0; i < sorted.length; i++) {
+          for (let j = i+1; j < Math.min(sorted.length, i+6); j++) {
+            const dx = sorted[i].p.x - sorted[j].p.x;
+            const dy = sorted[i].p.y - sorted[j].p.y;
+            const dz = sorted[i].p.z - sorted[j].p.z;
+            const d  = Math.sqrt(dx*dx+dy*dy+dz*dz);
+            if (d < MAX) {
+              const col = getColor(sorted[i].p, sorted[i].i, pts.length, palette, state.params.colorMode, t);
+              ctx.beginPath();
+              ctx.moveTo(sorted[i].proj.x, sorted[i].proj.y);
+              ctx.lineTo(sorted[j].proj.x, sorted[j].proj.y);
+              ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.07 * (1 - d/MAX)})`;
+              ctx.lineWidth = 0.5; ctx.stroke();
+            }
+          }
+        }
+      }
+
+      sorted.forEach(({ p, i, p3, proj }) => {
+        const col  = getColor(p, i, pts.length, palette, state.params.colorMode, t);
+        const fogA = state.fx.fog ? Math.max(0.1, 1 - Math.abs(p3[2]) / (state.params.spread * 2)) : 1;
+        const sz   = state.params.size * proj.scale * 0.4;
+        if (state.fx.bloom) drawGlowPoint(proj.x, proj.y, sz, col, fogA * 0.4);
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, Math.max(0.5, sz), 0, Math.PI*2);
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA})`;
+        ctx.fill();
+      });
+    },
+
+    spiral(pts, palette, t) {
+      const sorted = pts.map((p, i) => {
+        const p3   = transform([p.x, p.y, p.z]);
+        const proj = project(p3);
+        return { p, i, p3, proj };
+      }).filter(d => d.proj).sort((a, b) => a.p3[2] - b.p3[2]);
+
+      // Arm lines
+      const byArm = {};
+      pts.forEach((p, i) => {
+        if (!byArm[p.arm]) byArm[p.arm] = [];
+        byArm[p.arm].push(p);
+      });
+      Object.values(byArm).forEach(arm => {
+        const armSorted = arm.sort((a,b) => a.i - b.i);
+        for (let i = 1; i < armSorted.length; i++) {
+          const ap = project(transform([armSorted[i-1].x, armSorted[i-1].y, armSorted[i-1].z]));
+          const bp = project(transform([armSorted[i].x, armSorted[i].y, armSorted[i].z]));
+          if (!ap || !bp) continue;
+          const col = samplePalette(armSorted[i].v, palette);
+          ctx.beginPath();
+          ctx.moveTo(ap.x, ap.y);
+          ctx.lineTo(bp.x, bp.y);
+          ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.2)`;
+          ctx.lineWidth   = 0.8;
+          ctx.stroke();
+        }
+      });
+
+      sorted.forEach(({ p, i, p3, proj }) => {
+        const col  = getColor(p, i, pts.length, palette, state.params.colorMode, t);
+        const fogA = state.fx.fog ? Math.max(0.15, 1 - Math.abs(p3[2]) / (state.params.spread * 2)) : 1;
+        const pul  = state.fx.pulse ? (0.7 + 0.3 * Math.sin(t * p.animSpeed + p.animOffset)) : 1;
+        const sz   = state.params.size * proj.scale * 0.4 * pul;
+        if (state.fx.bloom) drawGlowPoint(proj.x, proj.y, sz, col, fogA * 0.5);
+        ctx.beginPath();
+        ctx.arc(proj.x, proj.y, Math.max(0.4, sz), 0, Math.PI*2);
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA})`;
+        ctx.fill();
+      });
+    },
+
+    terrain(pts, palette, t) {
+      const res = Math.ceil(Math.sqrt(pts.length));
+      // Triangulated mesh
+      for (let r = 0; r < res-1; r++) {
+        for (let c = 0; c < res-1; c++) {
+          const idx = r * res + c;
+          if (idx + res + 1 >= pts.length) continue;
+          const a = pts[idx],   b = pts[idx+1];
+          const d = pts[idx+res], e = pts[idx+res+1];
+          const pul = state.fx.pulse ? (1 + 0.02 * Math.sin(t + a.x * 0.5 + a.z * 0.3)) : 1;
+          const ap  = project(transform([a.x, a.y * pul, a.z]));
+          const bp  = project(transform([b.x, b.y * pul, b.z]));
+          const dp  = project(transform([d.x, d.y * pul, d.z]));
+          const ep  = project(transform([e.x, e.y * pul, e.z]));
+          if (!ap || !bp || !dp || !ep) continue;
+
+          [[ap,bp,ep],[ap,ep,dp]].forEach(tri => {
+            const avgV = (a.v + b.v + d.v) / 3;
+            const col  = samplePalette(avgV, palette);
+            ctx.beginPath();
+            ctx.moveTo(tri[0].x, tri[0].y);
+            ctx.lineTo(tri[1].x, tri[1].y);
+            ctx.lineTo(tri[2].x, tri[2].y);
+            ctx.closePath();
+            if (state.fx.wireframe) {
+              ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.4)`;
+              ctx.lineWidth   = 0.4; ctx.stroke();
+            } else {
+              ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},0.75)`;
+              ctx.fill();
+              ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.06)`;
+              ctx.lineWidth   = 0.2; ctx.stroke();
+            }
+          });
+        }
+      }
+    },
+
+    constellation(pts, palette, t) {
+      // Connect bright stars
+      const bright = pts.filter(p => p.bright > 0.7);
+      const MAX    = state.params.spread * 0.9;
+      for (let i = 0; i < bright.length; i++) {
+        for (let j = i+1; j < bright.length; j++) {
+          const dx = bright[i].x - bright[j].x;
+          const dy = bright[i].y - bright[j].y;
+          const dz = bright[i].z - bright[j].z;
+          const d  = Math.sqrt(dx*dx+dy*dy+dz*dz);
+          if (d < MAX) {
+            const ap = project(transform([bright[i].x, bright[i].y, bright[i].z]));
+            const bp = project(transform([bright[j].x, bright[j].y, bright[j].z]));
+            if (!ap || !bp) continue;
+            const col = samplePalette(bright[i].v, palette);
+            ctx.beginPath();
+            ctx.moveTo(ap.x, ap.y);
+            ctx.lineTo(bp.x, bp.y);
+            ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},0.12)`;
+            ctx.lineWidth   = 0.6; ctx.stroke();
+          }
+        }
+      }
+
+      pts.forEach((p, i) => {
+        const pp  = project(transform([p.x, p.y, p.z]));
+        if (!pp) return;
+        const col  = getColor(p, i, pts.length, palette, state.params.colorMode, t);
+        const fogA = state.fx.fog ? Math.max(0.05, 1 - Math.abs(transform([p.x,p.y,p.z])[2]) / (state.params.spread * 2.5)) : 1;
+        const pul  = state.fx.pulse ? (0.5 + 0.5 * Math.sin(t * p.animSpeed * 0.5 + p.animOffset)) : 1;
+        const sz   = (0.5 + p.bright * state.params.size * 0.5) * pp.scale * pul;
+        if (p.bright > 0.7 && state.fx.bloom) drawGlowPoint(pp.x, pp.y, sz, col, fogA * 0.7);
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, Math.max(0.3, sz), 0, Math.PI*2);
+        ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA * (0.3 + p.bright * 0.7)})`;
+        ctx.fill();
+      });
+    },
+
+    voxels(pts, palette, t) {
+      const sz  = state.params.size * 0.18;
+      const sorted = pts.map((p, i) => {
+        const p3   = transform([p.x, p.y, p.z]);
+        const proj = project(p3);
+        return { p, i, p3, proj };
+      }).filter(d => d.proj).sort((a, b) => a.p3[2] - b.p3[2]);
+
+      sorted.forEach(({ p, i, p3, proj }) => {
+        const col  = getColor(p, i, pts.length, palette, state.params.colorMode, t);
+        const fogA = state.fx.fog ? Math.max(0.15, 1 - Math.abs(p3[2]) / (state.params.spread * 2)) : 1;
+        const pul  = state.fx.pulse ? (0.85 + 0.15 * Math.sin(t * p.animSpeed * 0.8 + p.animOffset)) : 1;
+        const s    = sz * proj.scale * pul * 30;
+        const half = s / 2;
+
+        if (state.fx.bloom) drawGlowPoint(proj.x, proj.y, s * 0.6, col, fogA * 0.3);
+
+        if (state.fx.wireframe) {
+          ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA})`;
+          ctx.lineWidth   = 0.7;
+          ctx.strokeRect(proj.x - half, proj.y - half, s, s);
+        } else {
+          // Face lighting sim
+          ctx.fillStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA * 0.9})`;
+          ctx.fillRect(proj.x - half, proj.y - half, s, s);
+          // Top highlight
+          ctx.fillStyle = `rgba(255,255,255,${fogA * 0.12})`;
+          ctx.fillRect(proj.x - half, proj.y - half, s, half * 0.4);
+          // Edge
+          ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${fogA * 0.3})`;
+          ctx.lineWidth   = 0.5;
+          ctx.strokeRect(proj.x - half, proj.y - half, s, s);
+        }
+      });
+    },
+  };
+
+  // ── Scanlines post-process ──────────────────────────────────────────────────
+  function drawScanlines() {
+    for (let y = 0; y < H; y += 4) {
+      ctx.fillStyle = 'rgba(0,0,0,0.12)';
+      ctx.fillRect(0, y, W, 1.5);
+    }
+    // CRT vignette
+    const vgrd = ctx.createRadialGradient(CX, CY, H*0.3, CX, CY, H*0.85);
+    vgrd.addColorStop(0, 'transparent');
+    vgrd.addColorStop(1, 'rgba(0,0,0,0.45)');
+    ctx.fillStyle = vgrd;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // ── Render loop ─────────────────────────────────────────────────────────────
+  let animID;
+  function render(time) {
+    animID = requestAnimationFrame(render);
+    const dt = time - state.lastTime;
+    if (dt < 16) return; // cap ~60fps
+    state.lastTime = time;
+
+    // FPS
+    state.fpsHistory.push(1000 / Math.max(1, dt));
+    if (state.fpsHistory.length > 30) state.fpsHistory.shift();
+    state.fps = Math.round(state.fpsHistory.reduce((a,b)=>a+b,0) / state.fpsHistory.length);
+
+    // Auto rotate
+    if (state.autoRotate) {
+      state.rotY += state.autoRotateSpeed * state.params.speed;
+    }
+
+    CX = W / 2 + state.panX;
+    CY = H / 2 + state.panY;
+
+    const t = time * 0.001;
+
+    ctx.save();
+
+    // Background / trails
+    if (state.fx.trails) {
+      ctx.fillStyle = 'rgba(5,5,9,0.25)';
+      ctx.fillRect(0, 0, W, H);
+    } else {
+      drawBackground(state.params.bg);
+    }
+
+    // Grid & axes
+    if (state.fx.grid) drawGrid();
+    if (state.fx.axes) drawAxes();
+
+    // Draw visualization
+    const vizFn = drawers[state.vizType];
+    const pal   = PALETTES[state.activePalette];
+    if (vizFn && state.points.length > 0) {
+      vizFn(state.points, pal, t);
+    }
+
+    // Post-process
+    if (state.fx.scanlines) drawScanlines();
+
+    ctx.restore();
+
+    // HUD update (throttled)
+    state.frame++;
+    if (state.frame % 10 === 0) {
+      document.getElementById('hudPoints').textContent = state.points.length;
+      document.getElementById('hudFPS').textContent    = state.fps;
+      document.getElementById('hudZoom').textContent   = state.zoom.toFixed(2);
+      document.getElementById('hudRotX').textContent   = (state.rotX * 180 / Math.PI).toFixed(1) + '°';
+      document.getElementById('hudRotY').textContent   = (state.rotY * 180 / Math.PI).toFixed(1) + '°';
+      document.getElementById('stFrame').textContent   = state.frame;
+    }
+  }
+
+  // ── Data parsing ────────────────────────────────────────────────────────────
+  function parseData(raw) {
+    const lines = raw.trim().split(/\n+/);
+    const pts   = [];
+    try {
+      // Try JSON
+      const json = JSON.parse(raw.trim());
+      if (Array.isArray(json)) {
+        json.forEach((item, i) => {
+          if (Array.isArray(item)) {
+            pts.push({ x: +item[0]||0, y: +item[1]||0, z: +item[2]||0, v: +item[3]||(i/json.length), i });
+          } else if (typeof item === 'object') {
+            pts.push({ x: +item.x||0, y: +item.y||0, z: +item.z||0, v: +item.v||(i/json.length), i });
+          } else {
+            const maxVal = json.reduce((m, v) => Math.max(m, Math.abs(+v || 0)), 0.001);
+            pts.push({ x: i, y: +item||0, z: 0, v: Math.abs(+item || 0) / maxVal, i });
+          }
+        });
+        return pts;
+      }
+    } catch(e) {}
+
+    // Try CSV / plain numbers
+    lines.forEach((line, i) => {
+      const parts = line.split(/[,\s\t]+/).map(p => parseFloat(p)).filter(n => !isNaN(n));
+      if (parts.length === 0) return;
+      if (parts.length === 1) pts.push({ x: i, y: parts[0], z: 0, v: 0.5, i });
+      else if (parts.length === 2) pts.push({ x: parts[0], y: parts[1], z: 0, v: 0.5, i });
+      else pts.push({ x: parts[0], y: parts[1], z: parts[2], v: parts[3] ?? 0.5, i });
+    });
+    return pts;
+  }
+
+  // ── Normalize data ──────────────────────────────────────────────────────────
+  function normalizePoints(pts) {
+    if (!pts.length) return pts;
+    const sp = state.params.spread;
+    const mx = Math.max(...pts.map(p => Math.abs(p.x)), 0.001);
+    const my = Math.max(...pts.map(p => Math.abs(p.y)), 0.001);
+    const mz = Math.max(...pts.map(p => Math.abs(p.z)), 0.001);
+    const scale = sp / Math.max(mx, my, mz);
+    return pts.map(p => ({
+      ...p,
+      x: p.x * scale,
+      y: p.y * scale,
+      z: p.z * scale,
+      animOffset: Math.random() * Math.PI * 2,
+      animSpeed:  0.5 + Math.random() * 1.5,
+    }));
+  }
+
+  // ── Palette UI ─────────────────────────────────────────────────────────────
+  function buildPaletteGrid() {
+    const grid = document.getElementById('paletteGrid');
+    grid.innerHTML = '';
+    PALETTES.forEach((pal, pi) => {
+      const sw  = document.createElement('div');
+      sw.className = 'palette-swatch' + (pi === state.activePalette ? ' active' : '');
+      sw.title = pal.name;
+      sw.style.background = `linear-gradient(135deg, ${pal.colors.join(',')})`;
+      sw.addEventListener('click', () => {
+        state.activePalette = pi;
+        document.querySelectorAll('.palette-swatch').forEach((s,i) => s.classList.toggle('active', i === pi));
+        document.getElementById('stPalette').textContent = pal.name;
+      });
+      grid.appendChild(sw);
+    });
+  }
+
+  // ── Toast notification ─────────────────────────────────────────────────────
+  function toast(msg, dur = 2000) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), dur);
+  }
+
+  // ── Export ─────────────────────────────────────────────────────────────────
+  function exportPNG() {
+    const link  = document.createElement('a');
+    link.download = `dataviz3d_${state.vizType}_${Date.now()}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    toast('PNG exported');
+  }
+
+  function exportJSON() {
+    const data = JSON.stringify(state.points.map(p => ({ x: p.x, y: p.y, z: p.z, v: p.v })), null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const link = document.createElement('a');
+    link.download = `dataviz3d_data_${Date.now()}.json`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast('JSON exported');
+  }
+
+  function exportSVG() {
+    const svgParts = [`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" style="background:#050509">`];
+    const pal = PALETTES[state.activePalette];
+    state.points.forEach((p, i) => {
+      const p3   = transform([p.x, p.y, p.z]);
+      const proj = project(p3);
+      if (!proj) return;
+      const col = getColor(p, i, state.points.length, pal, state.params.colorMode, 0);
+      const r   = Math.max(0.5, state.params.size * proj.scale * 0.5);
+      svgParts.push(`<circle cx="${proj.x.toFixed(1)}" cy="${proj.y.toFixed(1)}" r="${r.toFixed(1)}" fill="rgb(${col[0]},${col[1]},${col[2]})" opacity="0.85"/>`);
+    });
+    svgParts.push('</svg>');
+    const blob = new Blob([svgParts.join('\n')], { type: 'image/svg+xml' });
+    const link = document.createElement('a');
+    link.download = `dataviz3d_frame_${Date.now()}.svg`;
+    link.href = URL.createObjectURL(blob);
+    link.click();
+    URL.revokeObjectURL(link.href);
+    toast('SVG frame exported');
+  }
+
+  // ── Mouse / Touch interaction ───────────────────────────────────────────────
+  function initInteraction() {
+    const c = canvas;
+
+    c.addEventListener('mousedown', e => {
+      state.mouse.down = true;
+      state.mouse.last = { x: e.clientX, y: e.clientY };
+      state.mouse.shift = e.shiftKey;
+    });
+    window.addEventListener('mouseup', () => { state.mouse.down = false; });
+    window.addEventListener('mousemove', e => {
+      if (!state.mouse.down) return;
+      const dx = e.clientX - state.mouse.last.x;
+      const dy = e.clientY - state.mouse.last.y;
+      if (e.shiftKey) {
+        state.panX += dx;
+        state.panY += dy;
+      } else {
+        state.rotY += dx * 0.008;
+        state.rotX += dy * 0.008;
+      }
+      state.mouse.last = { x: e.clientX, y: e.clientY };
+    });
+
+    c.addEventListener('wheel', e => {
+      e.preventDefault();
+      state.zoom *= e.deltaY < 0 ? 1.08 : 0.93;
+      state.zoom = Math.max(0.1, Math.min(10, state.zoom));
+    }, { passive: false });
+
+    // Touch
+    let touches = {};
+    c.addEventListener('touchstart', e => {
+      e.preventDefault();
+      [...e.touches].forEach(t => { touches[t.identifier] = { x: t.clientX, y: t.clientY }; });
+    }, { passive: false });
+    c.addEventListener('touchmove', e => {
+      e.preventDefault();
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const prev = touches[t.identifier];
+        if (prev) {
+          state.rotY += (t.clientX - prev.x) * 0.01;
+          state.rotX += (t.clientY - prev.y) * 0.01;
+        }
+        touches[t.identifier] = { x: t.clientX, y: t.clientY };
+      } else if (e.touches.length === 2) {
+        const [a, b] = [...e.touches];
+        const dist = Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY);
+        const prevA = touches[a.identifier];
+        const prevB = touches[b.identifier];
+        if (prevA && prevB) {
+          const prevDist = Math.hypot(prevA.x-prevB.x, prevA.y-prevB.y);
+          state.zoom *= dist / Math.max(1, prevDist);
+          state.zoom = Math.max(0.1, Math.min(10, state.zoom));
+        }
+        touches[a.identifier] = { x: a.clientX, y: a.clientY };
+        touches[b.identifier] = { x: b.clientX, y: b.clientY };
+      }
+    }, { passive: false });
+  }
+
+  // ── Control bindings ────────────────────────────────────────────────────────
+  function initControls() {
+    // Viz type buttons
+    document.querySelectorAll('.viz-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.viz-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.vizType = btn.dataset.viz;
+        document.getElementById('stViz').textContent = state.vizType;
+        regenerate();
+      });
+    });
+
+    // Sliders
+    function bindSlider(id, key, label, mul=1, dec=0) {
+      const el = document.getElementById(id);
+      const lb = document.getElementById(label);
+      el.addEventListener('input', () => {
+        const v = el.value * mul;
+        state.params[key] = parseFloat(v.toFixed(dec));
+        lb.textContent = state.params[key];
+        if (key === 'count' || key === 'spread') regenerate();
+      });
+    }
+    bindSlider('ctrlSize',   'size',   'lblSize',   1, 0);
+    bindSlider('ctrlCount',  'count',  'lblCount',  1, 0);
+    bindSlider('ctrlSpeed',  'speed',  'lblSpeed',  0.1, 1);
+    bindSlider('ctrlSpread', 'spread', 'lblSpread', 0.5, 1);
+
+    document.getElementById('ctrlColorMode').addEventListener('change', e => {
+      state.params.colorMode = e.target.value;
+    });
+    document.getElementById('ctrlProjection').addEventListener('change', e => {
+      state.params.projection = e.target.value;
+    });
+    document.getElementById('ctrlBg').addEventListener('change', e => {
+      state.params.bg = e.target.value;
+    });
+
+    // FX toggles
+    document.querySelectorAll('.fx-toggle').forEach(el => {
+      el.addEventListener('click', () => {
+        const fx  = el.dataset.fx;
+        const pill = el.querySelector('.toggle-pill');
+        state.fx[fx] = !state.fx[fx];
+        pill.classList.toggle('on', state.fx[fx]);
+      });
+    });
+
+    // Header buttons
+    document.getElementById('btnAutoRotate').addEventListener('click', function() {
+      state.autoRotate = !state.autoRotate;
+      this.classList.toggle('active', state.autoRotate);
+    });
+    document.getElementById('btnRandom').addEventListener('click', randomize);
+    document.getElementById('btnReset').addEventListener('click', reset);
+    document.getElementById('btnExportPNG').addEventListener('click', exportPNG);
+    document.getElementById('btnExportSVG').addEventListener('click', exportSVG);
+    document.getElementById('btnExportJSON').addEventListener('click', exportJSON);
+
+    document.getElementById('btnLoadData').addEventListener('click', () => {
+      const raw = document.getElementById('dataInput').value.trim();
+      if (!raw) { toast('No data entered'); return; }
+      try {
+        const pts = parseData(raw);
+        if (pts.length === 0) { toast('No valid data found'); return; }
+        state.points = normalizePoints(pts);
+        toast(`Loaded ${pts.length} points`);
+      } catch(e) {
+        toast('Parse error');
+      }
+    });
+
+    document.getElementById('btnGenData').addEventListener('click', regenerate);
+  }
+
+  function regenerate() {
+    state.points = generateData(state.vizType, state.params.count, state.params.spread);
+  }
+
+  function randomize() {
+    const types = Object.keys(drawers);
+    state.vizType = types[Math.floor(Math.random() * types.length)];
+    state.activePalette = Math.floor(Math.random() * PALETTES.length);
+    state.params.colorMode = ['palette','depth','rainbow','index'][Math.floor(Math.random()*4)];
+    state.rotX = (Math.random() - 0.5) * 1.5;
+    state.rotY = Math.random() * Math.PI * 2;
+    state.autoRotate = Math.random() > 0.4;
+    // Sync UI
+    document.querySelectorAll('.viz-btn').forEach(b => b.classList.toggle('active', b.dataset.viz === state.vizType));
+    document.querySelectorAll('.palette-swatch').forEach((s,i) => s.classList.toggle('active', i === state.activePalette));
+    document.getElementById('ctrlColorMode').value = state.params.colorMode;
+    document.getElementById('btnAutoRotate').classList.toggle('active', state.autoRotate);
+    document.getElementById('stViz').textContent = state.vizType;
+    document.getElementById('stPalette').textContent = PALETTES[state.activePalette].name;
+    regenerate();
+    toast(`${state.vizType.toUpperCase()} · ${PALETTES[state.activePalette].name}`);
+  }
+
+  function reset() {
+    state.rotX = 0.4; state.rotY = 0.3; state.rotZ = 0;
+    state.zoom = 1; state.panX = 0; state.panY = 0;
+    state.autoRotate = false;
+    document.getElementById('btnAutoRotate').classList.remove('active');
+    toast('View reset');
+  }
+
+  // ── Init ───────────────────────────────────────────────────────────────────
+  function init() {
+    ctx = canvas.getContext('2d');
+    resize();
+    window.addEventListener('resize', resize);
+
+    buildPaletteGrid();
+    initControls();
+    initInteraction();
+
+    // Load server-injected contribution data when available, else use demo data
+    if (__CONFIG__ && __CONFIG__.points && __CONFIG__.points.length > 0) {
+      state.vizType = __CONFIG__.vizType || 'bars3d';
+      state.points  = __CONFIG__.points;
+      state.autoRotate = true;
+      // Sync viz-type button highlight
+      document.querySelectorAll('.viz-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.viz === state.vizType)
+      );
+      document.getElementById('stViz').textContent = state.vizType;
+      // Update header logo with contribution context
+      const logoEl = document.getElementById('appLogo');
+      if (logoEl && __CONFIG__.title) logoEl.textContent = __CONFIG__.title;
+      document.getElementById('btnAutoRotate').classList.add('active');
+      toast(__CONFIG__.toastMsg || 'Contribution data loaded', 2500);
+    } else {
+      state.points = generateData('scatter3d', 300, 5);
+    }
+
+    requestAnimationFrame(render);
+    if (!__CONFIG__) toast('DataViz3D initialized', 1500);
+  }
+
+  return { init, state, PALETTES, generateData, parseData };
+
+})();
+
+// Bootstrap
+document.addEventListener('DOMContentLoaded', DataViz3D.init);
+</script>
+</body>
+</html>

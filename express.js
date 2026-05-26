@@ -5,6 +5,7 @@ import langCard from "./api/top-langs.js";
 import wakatimeCard from "./api/wakatime.js";
 import gistCard from "./api/gist.js";
 import skylineCard from "./api/skyline.js";
+import datavizCard from "./api/dataviz.js";
 import express from "express";
 
 const app = express();
@@ -16,6 +17,7 @@ router.get("/top-langs", langCard);
 router.get("/wakatime", wakatimeCard);
 router.get("/gist", gistCard);
 router.get("/skyline", skylineCard);
+router.get("/dataviz", datavizCard);
 
 app.use("/api", router);
 
