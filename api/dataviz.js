@@ -48,7 +48,13 @@ function buildPoints(data) {
 
 // @ts-ignore
 export default async (req, res) => {
-  const { username, year } = req.query;
+  const { username, year, viz } = req.query;
+
+  const VIZ_TYPES = new Set([
+    "scatter3d", "bars3d", "surface", "helix", "network",
+    "particles", "spiral", "terrain", "constellation", "voxels",
+  ]);
+  const vizType = VIZ_TYPES.has(viz) ? viz : "bars3d";
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=3600");
@@ -83,7 +89,7 @@ export default async (req, res) => {
 
   const points = buildPoints(data);
   const config = {
-    vizType: "bars3d",
+    vizType,
     title: `${data.name} / ${data.year} Contributions`,
     toastMsg: `${data.totalContributions.toLocaleString()} contributions in ${data.year}`,
     points,
