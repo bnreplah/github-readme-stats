@@ -680,6 +680,167 @@ You can customize the appearance and behavior of the WakaTime stats card using t
 
 ***
 
+# GitHub Skyline Card
+
+Renders a 2D SVG contribution skyline — week columns of stacked colored blocks — that can be embedded directly in a README like any other stats card.
+
+**No PAT required.** Contributions are scraped from GitHub's public profile page. If a `PAT_1` environment variable is set, the authenticated GraphQL API is used instead (more reliable, returns the user's display name).
+
+### Usage
+
+```md
+[![GitHub Skyline](https://YOUR_INSTANCE/api/skyline?username=USERNAME)](https://github.com/USERNAME)
+```
+
+### Options
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `username` | string | *(required)* | GitHub username |
+| `year` | number | current year | Year to display (2008 or later) |
+| `view` | `skyline` \| `city` \| `flat` | `skyline` | Rendering style: stacked blocks (`skyline`), solid building facades (`city`), or flat blocks (`flat`) |
+| `theme` | string | `default` | Card color theme (same set as stats card) |
+| `title_color` | hex | theme default | Title text color |
+| `text_color` | hex | theme default | Body text color |
+| `bg_color` | hex or gradient | theme default | Background color |
+| `border_color` | hex | theme default | Border color |
+| `hide_border` | boolean | `false` | Hide the card border |
+| `hide_title` | boolean | `false` | Hide the card title |
+| `custom_title` | string | `{name}'s GitHub Skyline` | Override the card title |
+| `border_radius` | number | `4.5` | Corner radius in px |
+| `disable_animations` | boolean | `false` | Disable SVG animations |
+| `cache_seconds` | number | `86400` | Cache duration in seconds |
+
+### Demo
+
+```md
+<!-- Default skyline view -->
+![Skyline](https://YOUR_INSTANCE/api/skyline?username=bnreplah&year=2025)
+
+<!-- City view with custom theme -->
+![Skyline](https://YOUR_INSTANCE/api/skyline?username=bnreplah&year=2025&view=city&theme=radical)
+
+<!-- Flat view, dark theme, hidden border -->
+![Skyline](https://YOUR_INSTANCE/api/skyline?username=bnreplah&year=2024&view=flat&theme=dark&hide_border=true)
+```
+
+***
+
+# DataViz3D Interactive Visualization
+
+Serves a full interactive HTML page powered by the DataViz3D Canvas 2D/3D engine, pre-loaded with the user's GitHub contribution data. Unlike the skyline card (which is a static SVG), this is a live web app — users can rotate, zoom, pan, switch visualization types, change palettes, and export PNG/SVG/JSON directly in the browser.
+
+**No PAT required** — uses the same dual-strategy fetching as the skyline card.
+
+> [!NOTE]
+> Because this endpoint returns `text/html` (not `image/svg+xml`), it cannot be embedded as a `![image]()` in a README. Link to it instead, or embed it in an `<iframe>`.
+
+### Usage
+
+```md
+<!-- Link from README -->
+[View my 3D contribution graph](https://YOUR_INSTANCE/api/dataviz?username=USERNAME)
+
+<!-- Embed in a webpage -->
+<iframe src="https://YOUR_INSTANCE/api/dataviz?username=USERNAME&year=2025" width="100%" height="600px" frameborder="0"></iframe>
+```
+
+### Options
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `username` | string | *(required)* | GitHub username |
+| `year` | number | current year | Contribution year to display |
+| `viz` | string | `bars3d` | Initial visualization type (see table below) |
+
+### Visualization Types
+
+| `viz` value | Description |
+|---|---|
+| `bars3d` | **Bar Forest** — contribution bars rising from a 3D grid (best for contribution data) |
+| `scatter3d` | **Scatter 3D** — each contribution day as a floating point in 3D space |
+| `surface` | **Surface** — mesh surface where height encodes contribution density |
+| `helix` | **DNA Helix** — contributions arranged as a double helix |
+| `network` | **Network** — node-edge graph connecting nearby contribution days |
+| `particles` | **Particles** — animated particle cloud, density reflects contributions |
+| `spiral` | **Spiral** — galaxy-style spiral arms |
+| `terrain` | **Terrain** — triangulated landscape mesh |
+| `constellation` | **Constellation** — star field with connecting edges between bright days |
+| `voxels` | **Voxels** — 3D cube blocks |
+
+### Interactive Controls
+
+Once the page is open, users can:
+
+- **Drag** to rotate the visualization
+- **Scroll** to zoom in/out
+- **Shift + drag** to pan
+- **Left panel** — switch visualization type, adjust point size/count/speed/spread, change color mode
+- **Color palette** — 10 built-in palettes (Cyber, Inferno, Ocean, Forest, Lava, Neon, Pastel, Monochrome, Gold, Blood)
+- **FX panel** (right) — toggle bloom glow, motion trails, grid floor, axes, scanlines, connect lines, data labels, depth fog, pulse animation, wireframe mode
+- **Projection** — Perspective, Orthographic, or Isometric
+- **Background** — Deep Space, Void Black, Nebula, Grid Room, or Gradient
+- **Export buttons** — download current frame as PNG, SVG, or raw data as JSON
+- **⟳ Rotate** — toggle auto-rotation
+- **⚡ Random** — randomize visualization type and palette
+- **✕ Reset** — reset camera to default position
+
+### Examples
+
+```
+<!-- Contribution bar forest, current year -->
+https://YOUR_INSTANCE/api/dataviz?username=bnreplah
+
+<!-- Scatter 3D, specific year -->
+https://YOUR_INSTANCE/api/dataviz?username=bnreplah&year=2024&viz=scatter3d
+
+<!-- Terrain mesh, 2023 -->
+https://YOUR_INSTANCE/api/dataviz?username=bnreplah&year=2023&viz=terrain
+
+<!-- Constellation view -->
+https://YOUR_INSTANCE/api/dataviz?username=bnreplah&viz=constellation
+```
+
+***
+
+# DataViz3D Gallery (Configuration UI)
+
+A browser-based configuration tool that lets you enter a username and year, preview all 10 visualization types side-by-side, and copy the shareable URL for any configuration — without touching query strings manually.
+
+### Usage
+
+```
+https://YOUR_INSTANCE/api/dataviz-gallery
+```
+
+Or with pre-populated fields:
+
+```
+https://YOUR_INSTANCE/api/dataviz-gallery?username=USERNAME&year=2025&viz=bars3d
+```
+
+### Features
+
+| Feature | Description |
+|---|---|
+| **Username / Year / Viz** form | Fill in the fields and click **▶ Load Preview** to render |
+| **Sidebar viz list** | Click any visualization type to switch instantly |
+| **← Prev / Next →** buttons | Cycle through all 10 types with one click |
+| **Live iframe preview** | The `/api/dataviz` page loads inside the gallery for immediate feedback |
+| **URL bar + Copy button** | Shows the shareable link and copies it to clipboard |
+| **Bookmarkable** | Query params (`?username=X&year=Y&viz=Z`) auto-populate the form on load |
+| **Open Full View ↗** | Opens the current preview in a new tab |
+
+### Query Parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `username` | string | Pre-populates the username field and loads a preview automatically |
+| `year` | number | Pre-populates the year field |
+| `viz` | string | Sets the initial visualization type in the selector |
+
+***
+
 # All Demos
 
 *   Default
