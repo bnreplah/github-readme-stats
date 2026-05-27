@@ -6,8 +6,8 @@ import wakatimeCard from "./api/wakatime.js";
 import gistCard from "./api/gist.js";
 import skylineCard from "./api/skyline.js";
 import datavizCard from "./api/dataviz.js";
+import datavizGallery from "./api/dataviz-gallery.js";
 import express from "express";
-import skylineCard from "./api/skyline.js";
 
 const app = express();
 const router = express.Router();
@@ -19,6 +19,7 @@ router.get("/wakatime", wakatimeCard);
 router.get("/gist", gistCard);
 router.get("/skyline", skylineCard);
 router.get("/dataviz", datavizCard);
+router.get("/dataviz-gallery", datavizGallery);
 
 app.use("/api", router);
 

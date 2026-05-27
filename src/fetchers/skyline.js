@@ -48,7 +48,9 @@ const fetchViaGraphQL = async (username, targetYear) => {
     const err = res.data.errors[0];
     throw new CustomError(
       err.message || "GraphQL error fetching contribution data.",
-      err.type === "NOT_FOUND" ? CustomError.USER_NOT_FOUND : CustomError.GRAPHQL_ERROR,
+      err.type === "NOT_FOUND"
+        ? CustomError.USER_NOT_FOUND
+        : CustomError.GRAPHQL_ERROR,
     );
   }
 
@@ -69,48 +71,70 @@ const hasApiToken = () =>
   Boolean(process.env.PAT_1 || process.env.GITHUB_TOKEN);
 
 /**
- * Parse contribution days from GitHub's public contribution graph HTML.
- * Handles both attribute orderings GitHub has used over time:
- *   data-count="N" ... data-date="YYYY-MM-DD"
- *   data-date="YYYY-MM-DD" ... data-count="N"
+ * Parse contribution days out of GitHub's public contribution graph HTML.
  *
+ * GitHub has used three formats over the years:
+ *   1. Current (2024+): <td data-date="…" id="contribution-day-component-X-Y" data-level="0-4">
+ *      with separate <tool-tip for="contribution-day-component-X-Y">N contributions on …</tool-tip>
+ *   2. Legacy table: data-date + data-count on the same element
+ *   3. Legacy SVG:   data-count + data-date on <rect> elements
  * @param {string} html GitHub contributions page HTML.
- * @returns {{contributionCount: number, date: string}[]} Contribution day records.
+ * @returns {Array<{date: string, contributionCount: number}>} Parsed contribution days.
  */
 const parseContributionDays = (html) => {
-  const days = [];
-
-  // Pattern A: <rect data-count="N" ... data-date="YYYY-MM-DD" .../>
-  // Pattern B: <td  data-date="YYYY-MM-DD" ... data-count="N" ...>
-  const pattern =
-    /data-count="(\d+)"[^>]*?data-date="(\d{4}-\d{2}-\d{2})"|data-date="(\d{4}-\d{2}-\d{2})"[^>]*?data-count="(\d+)"/g;
-
   let m;
-  while ((m = pattern.exec(html)) !== null) {
+
+  // ── Format 1: current GitHub (contribution-day-component IDs) ─────────────
+  // Build id→date map from <td> elements
+  const tdPat =
+    /data-date="(\d{4}-\d{2}-\d{2})"[^>]*id="(contribution-day-component-[\d-]+)"/g;
+  const idToDate = new Map();
+  while ((m = tdPat.exec(html)) !== null) {
+    idToDate.set(m[2], m[1]);
+  }
+
+  if (idToDate.size > 0) {
+    // Build id→count map from <tool-tip> elements
+    const tipPat =
+      /for="(contribution-day-component-[\d-]+)"[^>]*>(\d+) contributions?/g;
+    const idToCount = new Map();
+    while ((m = tipPat.exec(html)) !== null) {
+      idToCount.set(m[1], parseInt(m[2], 10));
+    }
+    return Array.from(idToDate, ([id, date]) => ({
+      date,
+      contributionCount: idToCount.get(id) ?? 0,
+    }));
+  }
+
+  // ── Format 2/3: legacy data-count attribute ────────────────────────────────
+  const days = [];
+  const countPat =
+    /data-count="(\d+)"[^>]*?data-date="(\d{4}-\d{2}-\d{2})"|data-date="(\d{4}-\d{2}-\d{2})"[^>]*?data-count="(\d+)"/g;
+  while ((m = countPat.exec(html)) !== null) {
     days.push({
       contributionCount: parseInt(m[1] ?? m[4], 10),
       date: m[2] ?? m[3],
     });
   }
-
-  // Fallback: newer GitHub uses aria-label="N contributions on <date>"
-  if (days.length === 0) {
-    const ariaPattern =
-      /data-date="(\d{4}-\d{2}-\d{2})"[^>]*aria-label="(\d+) contributions? on/g;
-    while ((m = ariaPattern.exec(html)) !== null) {
-      days.push({ date: m[1], contributionCount: parseInt(m[2], 10) });
-    }
+  if (days.length > 0) {
+    return days;
   }
 
+  // ── Format 4: aria-label fallback ─────────────────────────────────────────
+  const ariaPat =
+    /data-date="(\d{4}-\d{2}-\d{2})"[^>]*aria-label="(\d+) contributions? on/g;
+  while ((m = ariaPat.exec(html)) !== null) {
+    days.push({ date: m[1], contributionCount: parseInt(m[2], 10) });
+  }
   return days;
 };
 
 /**
- * Group sorted contribution days into Sun-Sat weeks,
- * matching GitHub's own contribution calendar column layout.
- *
- * @param {{contributionCount: number, date: string}[]} days Sorted contribution days.
- * @returns {{contributionDays: {contributionCount: number, date: string}[]}[]} Contribution weeks.
+ * Group sorted contribution days into Sun–Sat weeks,
+ * matching GitHub's contribution calendar column layout.
+ * @param {Array<{date: string, contributionCount: number}>} days Sorted contribution days.
+ * @returns {Array<{contributionDays: Array}>} Contribution weeks.
  */
 const groupIntoWeeks = (days) => {
   const weeks = [];
@@ -131,7 +155,9 @@ const groupIntoWeeks = (days) => {
     }
   }
 
-  if (week.length > 0) weeks.push({ contributionDays: week });
+  if (week.length > 0) {
+    weeks.push({ contributionDays: week });
+  }
   return weeks;
 };
 
@@ -212,7 +238,9 @@ const fetchViaScraping = async (username, targetYear) => {
  * @returns {Promise<object>} Skyline data.
  */
 const fetchSkyline = async (username, year) => {
-  if (!username) throw new MissingParamError(["username"]);
+  if (!username) {
+    throw new MissingParamError(["username"]);
+  }
 
   const targetYear = parseInt(String(year), 10) || new Date().getFullYear();
 

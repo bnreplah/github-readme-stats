@@ -8,6 +8,11 @@ import { MissingParamError } from "../src/common/error.js";
 const TEMPLATE_PATH = join(process.cwd(), "src/templates/dataviz.html");
 const CONFIG_PLACEHOLDER = "const __CONFIG__ = null; /* __DATAVIZ_CONFIG__ */";
 
+/**
+ * Convert skyline contribution data into DataViz3D bar point objects.
+ * @param {object} data - Skyline data from fetchSkyline.
+ * @returns {Array<object>} DataViz3D-compatible point array.
+ */
 function buildPoints(data) {
   const { weeks } = data;
   const maxCount = Math.max(
@@ -37,7 +42,7 @@ function buildPoints(data) {
         i: idx,
         barBase: -0.5,
         animOffset: ((wi * 7 + di) * 0.618033) % (Math.PI * 2),
-        animSpeed: 0.5 + ((wi * 7 + di) * 0.381966) % 1.5,
+        animSpeed: 0.5 + (((wi * 7 + di) * 0.381966) % 1.5),
       });
       idx++;
     });
@@ -46,13 +51,27 @@ function buildPoints(data) {
   return points;
 }
 
+/**
+ * Serves the DataViz3D interactive HTML page pre-loaded with GitHub contribution data.
+ * @param {object} req - Express request.
+ * @param {object} res - Express response.
+ * @returns {Promise<void>} Sends HTML response.
+ */
 // @ts-ignore
 export default async (req, res) => {
   const { username, year, viz } = req.query;
 
   const VIZ_TYPES = new Set([
-    "scatter3d", "bars3d", "surface", "helix", "network",
-    "particles", "spiral", "terrain", "constellation", "voxels",
+    "scatter3d",
+    "bars3d",
+    "surface",
+    "helix",
+    "network",
+    "particles",
+    "spiral",
+    "terrain",
+    "constellation",
+    "voxels",
   ]);
   const vizType = VIZ_TYPES.has(viz) ? viz : "bars3d";
 
@@ -79,7 +98,8 @@ export default async (req, res) => {
   try {
     data = await fetchSkyline(username, year);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to fetch contribution data.";
+    const msg =
+      err instanceof Error ? err.message : "Failed to fetch contribution data.";
     return res.status(502).send(`
       <!DOCTYPE html><html><head><title>Error</title>
       <style>body{background:#050509;color:#f72585;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;text-align:center;padding:20px;}</style>

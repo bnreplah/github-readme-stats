@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DataViz3D — Contribution Gallery</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+  :root {
+    --bg: #050509;
+    --surface: #0a0a14;
+    --panel: #0e0e1c;
+    --border: #1a1a30;
+    --accent1: #00f5d4;
+    --accent2: #f72585;
+    --accent3: #7209b7;
+    --accent4: #3a86ff;
+    --accent5: #ffbe0b;
+    --text: #c8d6e5;
+    --text-dim: #5a6a80;
+    --mono: 'Share Tech Mono', monospace;
+    --sans: 'Rajdhani', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--accent1);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: var(--accent1);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--accent1);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.4; transform: scale(0.7); }
+  }
+  .header-links {
+    display: flex;
+    gap: 12px;
+  }
+  .hlink {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-decoration: none;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: color 0.2s;
+  }
+  .hlink:hover { color: var(--accent1); }
+
+  /* ── Config panel ── */
+  .config-bar {
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 18px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+  }
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .field input, .field select {
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 7px 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    outline: none;
+    min-width: 160px;
+    transition: border-color 0.2s;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent1); }
+  .field select option { background: var(--surface); }
+
+  .btn-primary {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 20px;
+    border: 1px solid var(--accent1);
+    background: rgba(0,245,212,0.08);
+    color: var(--accent1);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-primary:hover { background: rgba(0,245,212,0.16); }
+  .btn-primary:disabled { opacity: 0.4; cursor: default; }
+
+  .btn-secondary {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 16px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .btn-secondary:hover { border-color: var(--accent4); color: var(--accent4); }
+
+  /* ── URL bar ── */
+  .url-bar {
+    display: none;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 28px;
+    align-items: center;
+    gap: 10px;
+  }
+  .url-bar.visible { display: flex; }
+  .url-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent1);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.8;
+  }
+  .url-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ── Main area ── */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 200px;
+    background: var(--panel);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    padding: 12px 14px 8px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-title::before {
+    content: '';
+    width: 3px; height: 10px;
+    background: var(--accent1);
+    flex-shrink: 0;
+  }
+  .viz-list {
+    list-style: none;
+  }
+  .viz-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s;
+  }
+  .viz-item:hover { background: rgba(255,255,255,0.03); }
+  .viz-item.active {
+    background: rgba(0,245,212,0.07);
+    border-left: 2px solid var(--accent1);
+    padding-left: 14px;
+  }
+  .viz-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .viz-item.active .viz-name { color: var(--accent1); }
+  .viz-desc {
+    font-family: var(--sans);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    line-height: 1.3;
+  }
+  .viz-badge {
+    font-family: var(--mono);
+    font-size: 8px;
+    padding: 2px 5px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    border-radius: 2px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .viz-item.active .viz-badge { border-color: var(--accent1); color: var(--accent1); }
+
+  /* ── Preview pane ── */
+  .preview-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+  }
+  .preview-header {
+    padding: 10px 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .preview-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .preview-subtitle {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+  }
+  .preview-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .frame-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+  iframe#preview {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    background: var(--bg);
+  }
+
+  /* Empty / loading states */
+  .empty-state {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    background: var(--bg);
+    pointer-events: none;
+  }
+  .empty-state.hidden { display: none; }
+  .empty-icon {
+    font-family: var(--mono);
+    font-size: 36px;
+    opacity: 0.15;
+  }
+  .empty-text {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    line-height: 1.8;
+  }
+
+  .loading-bar {
+    position: absolute;
+    top: 0; left: 0;
+    height: 2px;
+    background: var(--accent1);
+    width: 0%;
+    transition: width 0.4s ease;
+    box-shadow: 0 0 8px var(--accent1);
+    z-index: 10;
+  }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    background: var(--panel);
+    border: 1px solid var(--accent1);
+    color: var(--accent1);
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 8px 18px;
+    letter-spacing: 2px;
+    opacity: 0;
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 999;
+    text-transform: uppercase;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ── Responsive ── */
+  @media (max-width: 600px) {
+    .sidebar { display: none; }
+    .config-bar { padding: 14px 16px; }
+  }
+
+  ::-webkit-scrollbar { width: 3px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">DataViz3D &nbsp;/&nbsp; Gallery</div>
+  <div class="header-links">
+    <a class="hlink" href="javascript:void(0)" id="lnkOpenFull">Open Full View ↗</a>
+  </div>
+</header>
+
+<!-- Config bar -->
+<div class="config-bar">
+  <div class="field">
+    <label>GitHub Username</label>
+    <input type="text" id="inUsername" placeholder="e.g. torvalds" autocomplete="off" spellcheck="false">
+  </div>
+  <div class="field">
+    <label>Year</label>
+    <input type="number" id="inYear" placeholder="2025" min="2008" max="2030" style="min-width:90px;max-width:110px;">
+  </div>
+  <div class="field">
+    <label>Visualization</label>
+    <select id="inViz">
+      <option value="bars3d">Bar Forest</option>
+      <option value="scatter3d">Scatter 3D</option>
+      <option value="surface">Surface</option>
+      <option value="helix">DNA Helix</option>
+      <option value="network">Network</option>
+      <option value="particles">Particles</option>
+      <option value="spiral">Spiral</option>
+      <option value="terrain">Terrain</option>
+      <option value="constellation">Constellation</option>
+      <option value="voxels">Voxels</option>
+    </select>
+  </div>
+  <button class="btn-primary" id="btnLoad">▶ Load Preview</button>
+  <button class="btn-secondary" id="btnCopyUrl">⎘ Copy URL</button>
+</div>
+
+<!-- URL display bar -->
+<div class="url-bar" id="urlBar">
+  <span class="url-label">URL</span>
+  <span class="url-text" id="urlText"></span>
+  <button class="btn-secondary" id="btnCopyUrl2" style="padding:4px 12px;font-size:10px;">Copy</button>
+</div>
+
+<div class="main">
+
+  <!-- Sidebar: viz type list -->
+  <div class="sidebar">
+    <div class="sidebar-title">Viz Types</div>
+    <ul class="viz-list" id="vizList">
+      <li class="viz-item active" data-viz="bars3d">
+        <div>
+          <div class="viz-name">Bar Forest</div>
+          <div class="viz-desc">Contribution bars in 3D grid</div>
+        </div>
+        <span class="viz-badge">Default</span>
+      </li>
+      <li class="viz-item" data-viz="scatter3d">
+        <div>
+          <div class="viz-name">Scatter 3D</div>
+          <div class="viz-desc">Points in 3D space</div>
+        </div>
+      </li>
+      <li class="viz-item" data-viz="surface">
+        <div>
+          <div class="viz-name">Surface</div>
+          <div class="viz-desc">Mesh surface topology</div>
+        </div>
+      </li>
+      <li class="viz-item" data-viz="helix">
+        <div>
+          <div class="viz-name">DNA Helix</div>
+          <div class="viz-desc">Double helix structure</div>
+        </div>
+      </li>
+      <li class="viz-item" data-viz="network">
+        <div>
+          <div class="viz-name">Network</div>
+          <div class="viz-desc">Node-edge graph</div>
+        </div>
+      </li>
+      <li class="viz-item" data-viz="particles">
+        <div>
+          <div class="viz-name">Particles</div>
+          <div class="viz-desc">Animated particle cloud</div>
+        </div>
+      </li>
+      <li class="viz-item" data-viz="spiral">
+        <div>
+          <div class="viz-name">Spiral</div>
+          <div class="viz-desc">Galaxy spiral arms</div>
+        </div>
+      </li>
+      <li class="viz-item" data-viz="terrain">
+        <div>
+          <div class="viz-name">Terrain</div>
+          <div class="viz-desc">Triangulated landscape</div>
+        </div>
+      </li>
+      <li class="viz-item" data-viz="constellation">
+        <div>
+          <div class="viz-name">Constellation</div>
+          <div class="viz-desc">Star field with edges</div>
+        </div>
+      </li>
+      <li class="viz-item" data-viz="voxels">
+        <div>
+          <div class="viz-name">Voxels</div>
+          <div class="viz-desc">3D cube blocks</div>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <!-- Preview pane -->
+  <div class="preview-pane">
+    <div class="preview-header">
+      <div>
+        <div class="preview-title" id="previewTitle">No preview loaded</div>
+        <div class="preview-subtitle" id="previewSubtitle">Enter a username and click Load Preview</div>
+      </div>
+      <div class="preview-actions">
+        <button class="btn-secondary" id="btnPrevViz" title="Previous viz type">← Prev</button>
+        <button class="btn-secondary" id="btnNextViz" title="Next viz type">Next →</button>
+      </div>
+    </div>
+
+    <div class="frame-wrap">
+      <div class="loading-bar" id="loadingBar"></div>
+      <iframe id="preview" title="DataViz3D Preview" sandbox="allow-scripts allow-same-origin"></iframe>
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">⬡</div>
+        <div class="empty-text">Enter a username above<br>and click Load Preview</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const VIZ_TYPES = [
+  'bars3d','scatter3d','surface','helix','network',
+  'particles','spiral','terrain','constellation','voxels'
+];
+
+const VIZ_NAMES = {
+  bars3d: 'Bar Forest', scatter3d: 'Scatter 3D', surface: 'Surface',
+  helix: 'DNA Helix', network: 'Network', particles: 'Particles',
+  spiral: 'Spiral', terrain: 'Terrain', constellation: 'Constellation',
+  voxels: 'Voxels',
+};
+
+let currentViz = 'bars3d';
+let currentUsername = '';
+let currentYear = '';
+let previewLoaded = false;
+
+// ── Elements ──
+const inUsername   = document.getElementById('inUsername');
+const inYear       = document.getElementById('inYear');
+const inViz        = document.getElementById('inViz');
+const btnLoad      = document.getElementById('btnLoad');
+const preview      = document.getElementById('preview');
+const emptyState   = document.getElementById('emptyState');
+const loadingBar   = document.getElementById('loadingBar');
+const urlBar       = document.getElementById('urlBar');
+const urlText      = document.getElementById('urlText');
+const previewTitle    = document.getElementById('previewTitle');
+const previewSubtitle = document.getElementById('previewSubtitle');
+
+// ── Toast ──
+function toast(msg, dur = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+// ── Build URL ──
+function buildUrl(username, year, viz) {
+  const base = window.location.origin + '/api/dataviz';
+  const params = new URLSearchParams({ username });
+  if (year) params.set('year', year);
+  if (viz && viz !== 'bars3d') params.set('viz', viz);
+  return `${base}?${params}`;
+}
+
+// ── Load preview ──
+function loadPreview(username, year, viz) {
+  if (!username) { toast('Enter a GitHub username'); return; }
+
+  currentUsername = username;
+  currentYear = year;
+  currentViz = viz;
+
+  const url = buildUrl(username, year, viz);
+
+  // Show loading bar
+  loadingBar.style.width = '40%';
+  emptyState.classList.add('hidden');
+  btnLoad.disabled = true;
+
+  preview.onload = () => {
+    loadingBar.style.width = '100%';
+    setTimeout(() => { loadingBar.style.width = '0%'; }, 400);
+    btnLoad.disabled = false;
+    previewLoaded = true;
+  };
+  preview.onerror = () => {
+    loadingBar.style.width = '0%';
+    btnLoad.disabled = false;
+  };
+
+  preview.src = url;
+
+  // Update header
+  const yearLabel = year || new Date().getFullYear();
+  previewTitle.textContent = `${username} — ${VIZ_NAMES[viz] || viz} (${yearLabel})`;
+  previewSubtitle.textContent = url;
+
+  // Show URL bar
+  urlText.textContent = url;
+  urlBar.classList.add('visible');
+
+  // Sync sidebar
+  document.querySelectorAll('.viz-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.viz === viz)
+  );
+  inViz.value = viz;
+}
+
+// ── Copy URL ──
+function copyUrl() {
+  const url = currentUsername
+    ? buildUrl(currentUsername, currentYear, currentViz)
+    : window.location.href;
+  navigator.clipboard.writeText(url).then(() => toast('URL copied to clipboard'));
+}
+
+// ── Event: Load button ──
+btnLoad.addEventListener('click', () => {
+  loadPreview(inUsername.value.trim(), inYear.value.trim(), inViz.value);
+});
+
+// ── Event: Enter key in inputs ──
+[inUsername, inYear].forEach(el =>
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') btnLoad.click();
+  })
+);
+
+// ── Event: Viz dropdown changes ──
+inViz.addEventListener('change', () => {
+  currentViz = inViz.value;
+  if (currentUsername) loadPreview(currentUsername, currentYear, currentViz);
+  else syncSidebar(currentViz);
+});
+
+function syncSidebar(viz) {
+  document.querySelectorAll('.viz-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.viz === viz)
+  );
+}
+
+// ── Event: Sidebar clicks ──
+document.querySelectorAll('.viz-item').forEach(el => {
+  el.addEventListener('click', () => {
+    const viz = el.dataset.viz;
+    inViz.value = viz;
+    currentViz = viz;
+    if (currentUsername) loadPreview(currentUsername, currentYear, viz);
+    else syncSidebar(viz);
+  });
+});
+
+// ── Event: Prev / Next buttons ──
+document.getElementById('btnPrevViz').addEventListener('click', () => {
+  const idx = VIZ_TYPES.indexOf(currentViz);
+  const viz = VIZ_TYPES[(idx - 1 + VIZ_TYPES.length) % VIZ_TYPES.length];
+  inViz.value = viz;
+  currentViz = viz;
+  if (currentUsername) loadPreview(currentUsername, currentYear, viz);
+  else syncSidebar(viz);
+});
+document.getElementById('btnNextViz').addEventListener('click', () => {
+  const idx = VIZ_TYPES.indexOf(currentViz);
+  const viz = VIZ_TYPES[(idx + 1) % VIZ_TYPES.length];
+  inViz.value = viz;
+  currentViz = viz;
+  if (currentUsername) loadPreview(currentUsername, currentYear, viz);
+  else syncSidebar(viz);
+});
+
+// ── Copy URL buttons ──
+document.getElementById('btnCopyUrl').addEventListener('click', copyUrl);
+document.getElementById('btnCopyUrl2').addEventListener('click', copyUrl);
+
+// ── Open full view ──
+document.getElementById('lnkOpenFull').addEventListener('click', () => {
+  if (!currentUsername) { toast('Load a preview first'); return; }
+  window.open(buildUrl(currentUsername, currentYear, currentViz), '_blank');
+});
+
+// ── Restore from query params ──
+(function restoreFromURL() {
+  const p = new URLSearchParams(window.location.search);
+  const u = p.get('username');
+  const y = p.get('year');
+  const v = p.get('viz') || 'bars3d';
+  if (u) {
+    inUsername.value = u;
+    if (y) inYear.value = y;
+    inViz.value = v;
+    loadPreview(u, y || '', v);
+  }
+})();
+</script>
+</body>
+</html>

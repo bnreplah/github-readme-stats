@@ -5,16 +5,34 @@ import { getCardColors } from "../common/color.js";
 import { encodeHTML } from "../common/html.js";
 
 const MONTH_LABELS = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 // Color levels matching gh-skyline thresholds (LowThreshold=0.33, MediumThreshold=0.66)
 const getContributionColor = (normalized) => {
-  if (normalized <= 0) return null;
-  if (normalized < 0.33) return "#9be9a8";
-  if (normalized < 0.66) return "#40c463";
-  if (normalized < 0.85) return "#30a14e";
+  if (normalized <= 0) {
+    return null;
+  }
+  if (normalized < 0.33) {
+    return "#9be9a8";
+  }
+  if (normalized < 0.66) {
+    return "#40c463";
+  }
+  if (normalized < 0.85) {
+    return "#30a14e";
+  }
   return "#216e39";
 };
 
@@ -113,7 +131,9 @@ const renderSkylineCard = (data, options = {}) => {
 
       const activeDays = week.contributionDays
         .filter((d) => {
-          if (d.contributionCount <= 0) return false;
+          if (d.contributionCount <= 0) {
+            return false;
+          }
           const parts = d.date.split("-");
           const dateMs = Date.UTC(
             parseInt(parts[0], 10),
@@ -128,7 +148,9 @@ const renderSkylineCard = (data, options = {}) => {
         .map((day, stackIdx) => {
           const normalized = day.contributionCount / maxDayCount;
           const color = getContributionColor(normalized);
-          if (!color) return "";
+          if (!color) {
+            return "";
+          }
           const blockY = GROUND_Y - (stackIdx + 1) * BLOCK_UNIT;
           return `<rect x="${x.toFixed(1)}" y="${blockY}" width="${blockWidth.toFixed(1)}" height="${BLOCK_HEIGHT}" fill="${color}" rx="1" />`;
         })
@@ -142,10 +164,14 @@ const renderSkylineCard = (data, options = {}) => {
   let lastMonth = -1;
   const monthLabels = weeks
     .map((week, weekIdx) => {
-      if (!week.contributionDays.length) return "";
+      if (!week.contributionDays.length) {
+        return "";
+      }
       const parts = week.contributionDays[0].date.split("-");
       const month = parseInt(parts[1], 10) - 1;
-      if (month === lastMonth) return "";
+      if (month === lastMonth) {
+        return "";
+      }
       lastMonth = month;
       const x = PADDING_X + weekIdx * barWidth;
       return `<text x="${x.toFixed(1)}" y="${MONTH_LABEL_Y}" fill="${textColor}" font-size="9" font-family="'Segoe UI', Ubuntu, Sans-Serif" opacity="0.7">${MONTH_LABELS[month]}</text>`;
