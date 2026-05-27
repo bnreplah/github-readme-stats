@@ -85,6 +85,9 @@ export default async (req, res) => {
     year,
     viz,
     format,
+    rx,
+    ry,
+    auto_rotate,
     title_color,
     text_color,
     bg_color,
@@ -186,6 +189,9 @@ export default async (req, res) => {
     title: `${data.name} / ${data.year} Contributions`,
     toastMsg: `${data.totalContributions.toLocaleString()} contributions in ${data.year}`,
     points,
+    autoRotate: parseBoolean(auto_rotate),
+    rotX: rx !== undefined ? parseFloat(String(rx)) : undefined,
+    rotY: ry !== undefined ? parseFloat(String(ry)) : undefined,
   };
 
   const injected = html.replace(

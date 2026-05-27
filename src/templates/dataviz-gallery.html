@@ -511,7 +511,24 @@
       <option value="voxels">Voxels</option>
     </select>
   </div>
+  <div class="field">
+    <label>Theme</label>
+    <select id="inTheme" style="min-width:120px;">
+      <option value="">Default</option>
+      <option value="dark">Dark</option>
+      <option value="radical">Radical</option>
+      <option value="merko">Merko</option>
+      <option value="gruvbox">Gruvbox</option>
+      <option value="tokyonight">Tokyo Night</option>
+      <option value="onedark">One Dark</option>
+      <option value="cobalt">Cobalt</option>
+      <option value="synthwave">Synthwave</option>
+      <option value="highcontrast">High Contrast</option>
+      <option value="dracula">Dracula</option>
+    </select>
+  </div>
   <button class="btn-primary" id="btnLoad">▶ Load Preview</button>
+  <button class="btn-secondary" id="btnCapture" title="Save the current 3D camera angle into the URL">⊕ Capture View</button>
   <button class="btn-secondary" id="btnCopyUrl">⎘ Copy URL</button>
 </div>
 
@@ -657,23 +674,29 @@ const VIZ_NAMES = {
   voxels: 'Voxels',
 };
 
-let currentViz = 'bars3d';
+// ── State ──
+let currentViz      = 'bars3d';
 let currentUsername = '';
-let currentYear = '';
-let currentSvgUrl = '';
+let currentYear     = '';
+let currentTheme    = '';
+let currentSvgUrl   = '';
 let currentMarkdown = '';
-let previewLoaded = false;
+let capturedRx      = null; // rotX captured from iframe (radians)
+let capturedRy      = null; // rotY captured from iframe (radians)
+let previewLoaded   = false;
+let badgeDebounce   = null;
 
 // ── Elements ──
-const inUsername   = document.getElementById('inUsername');
-const inYear       = document.getElementById('inYear');
-const inViz        = document.getElementById('inViz');
-const btnLoad      = document.getElementById('btnLoad');
-const preview      = document.getElementById('preview');
-const emptyState   = document.getElementById('emptyState');
-const loadingBar   = document.getElementById('loadingBar');
-const urlBar       = document.getElementById('urlBar');
-const urlText      = document.getElementById('urlText');
+const inUsername      = document.getElementById('inUsername');
+const inYear          = document.getElementById('inYear');
+const inViz           = document.getElementById('inViz');
+const inTheme         = document.getElementById('inTheme');
+const btnLoad         = document.getElementById('btnLoad');
+const preview         = document.getElementById('preview');
+const emptyState      = document.getElementById('emptyState');
+const loadingBar      = document.getElementById('loadingBar');
+const urlBar          = document.getElementById('urlBar');
+const urlText         = document.getElementById('urlText');
 const previewTitle    = document.getElementById('previewTitle');
 const previewSubtitle = document.getElementById('previewSubtitle');
 
@@ -686,33 +709,90 @@ function toast(msg, dur = 2200) {
 }
 
 // ── Build URLs ──
-function buildUrl(username, year, viz) {
+// rx/ry are optional camera angles (radians) only for the interactive URL
+function buildUrl(username, year, viz, theme, rx, ry) {
   const base = window.location.origin + '/api/dataviz';
   const params = new URLSearchParams({ username });
-  if (year) params.set('year', year);
+  if (year)  params.set('year', year);
   if (viz && viz !== 'bars3d') params.set('viz', viz);
+  if (theme) params.set('theme', theme);
+  if (rx != null) params.set('rx', rx.toFixed(3));
+  if (ry != null) params.set('ry', ry.toFixed(3));
   return `${base}?${params}`;
 }
 
-function buildSvgUrl(username, year, viz) {
+function buildSvgUrl(username, year, viz, theme) {
   const base = window.location.origin + '/api/dataviz';
   const params = new URLSearchParams({ username, format: 'svg' });
-  if (year) params.set('year', year);
+  if (year)  params.set('year', year);
   if (viz && viz !== 'bars3d') params.set('viz', viz);
+  if (theme) params.set('theme', theme);
   return `${base}?${params}`;
 }
 
-// ── Load preview ──
-function loadPreview(username, year, viz) {
+// ── Page query params → bookmarkable URL ──
+function buildGalleryUrl(username, year, viz, theme) {
+  const params = new URLSearchParams();
+  if (username) params.set('username', username);
+  if (year)     params.set('year', year);
+  if (viz && viz !== 'bars3d') params.set('viz', viz);
+  if (theme)    params.set('theme', theme);
+  return `${window.location.pathname}?${params}`;
+}
+
+// ── Sync badge panel (debounced so rapid changes don't flood the SVG endpoint) ──
+function scheduleBadgeUpdate() {
+  clearTimeout(badgeDebounce);
+  badgeDebounce = setTimeout(refreshBadgePanel, 350);
+}
+
+function refreshBadgePanel() {
+  const username = currentUsername;
+  if (!username) { return; }
+
+  const interactiveUrl = buildUrl(username, currentYear, currentViz, currentTheme, capturedRx, capturedRy);
+  const svgUrl         = buildSvgUrl(username, currentYear, currentViz, currentTheme);
+  const markdown       = `[![DataViz3D](${svgUrl})](${interactiveUrl})`;
+
+  currentSvgUrl   = svgUrl;
+  currentMarkdown = markdown;
+
+  document.getElementById('bInteractiveUrl').textContent = interactiveUrl;
+  document.getElementById('bSvgUrl').textContent         = svgUrl;
+  document.getElementById('bMarkdown').textContent       = markdown;
+  document.getElementById('badgePanel').classList.add('visible');
+
+  // Reload SVG badge preview only when URL changed
+  const img    = document.getElementById('badgePreviewImg');
+  const status = document.getElementById('badgePreviewStatus');
+  if (img.dataset.loadedUrl === svgUrl) { return; }
+  img.dataset.loadedUrl = svgUrl;
+  img.style.display = 'none';
+  status.style.display = 'block';
+  status.textContent = 'Loading…';
+  img.onload = () => {
+    img.style.display = 'block';
+    status.style.display = 'none';
+  };
+  img.onerror = () => {
+    status.textContent = 'Preview unavailable';
+  };
+  img.src = svgUrl;
+}
+
+// ── Load interactive preview ──
+function loadPreview(username, year, viz, theme) {
   if (!username) { toast('Enter a GitHub username'); return; }
 
   currentUsername = username;
-  currentYear = year;
-  currentViz = viz;
+  currentYear     = year;
+  currentViz      = viz;
+  currentTheme    = theme;
+  capturedRx      = null; // clear captured angle when reloading
+  capturedRy      = null;
 
-  const url = buildUrl(username, year, viz);
+  const url = buildUrl(username, year, viz, theme, null, null);
 
-  // Show loading bar
   loadingBar.style.width = '40%';
   emptyState.classList.add('hidden');
   btnLoad.disabled = true;
@@ -735,75 +815,35 @@ function loadPreview(username, year, viz) {
   previewTitle.textContent = `${username} — ${VIZ_NAMES[viz] || viz} (${yearLabel})`;
   previewSubtitle.textContent = url;
 
-  // Show URL bar
+  // Update URL bar
   urlText.textContent = url;
   urlBar.classList.add('visible');
 
-  // Sync sidebar
-  document.querySelectorAll('.viz-item').forEach(el =>
-    el.classList.toggle('active', el.dataset.viz === viz)
-  );
-  inViz.value = viz;
+  // Sync sidebar + dropdowns
+  syncSidebar(viz);
 
-  // Update badge panel
-  updateBadgePanel(username, year, viz);
+  // Push bookmarkable gallery URL to browser history
+  const galleryUrl = buildGalleryUrl(username, year, viz, theme);
+  history.replaceState(null, '', galleryUrl);
+
+  // Refresh badge panel immediately
+  refreshBadgePanel();
 }
 
-// ── Badge panel ──
-function updateBadgePanel(username, year, viz) {
-  const interactiveUrl = buildUrl(username, year, viz);
-  const svgUrl = buildSvgUrl(username, year, viz);
-  const markdown = `[![DataViz3D](${svgUrl})](${interactiveUrl})`;
-
-  currentSvgUrl = svgUrl;
-  currentMarkdown = markdown;
-
-  document.getElementById('bInteractiveUrl').textContent = interactiveUrl;
-  document.getElementById('bSvgUrl').textContent = svgUrl;
-  document.getElementById('bMarkdown').textContent = markdown;
-  document.getElementById('badgePanel').classList.add('visible');
-
-  // Load badge image preview
-  const img = document.getElementById('badgePreviewImg');
-  const status = document.getElementById('badgePreviewStatus');
-  img.style.display = 'none';
-  status.textContent = 'Loading…';
-  img.onload = () => {
-    img.style.display = 'block';
-    status.textContent = '';
-  };
-  img.onerror = () => {
-    status.textContent = 'Preview unavailable';
-  };
-  img.src = svgUrl;
+// ── Capture current 3D view angle from the iframe ──
+function captureView() {
+  if (!previewLoaded) { toast('Load a preview first'); return; }
+  try {
+    const iState = preview.contentWindow && preview.contentWindow.DataViz3D && preview.contentWindow.DataViz3D.state;
+    if (!iState) { toast('Could not read view state from canvas'); return; }
+    capturedRx = iState.rotX;
+    capturedRy = iState.rotY;
+    toast(`View captured  rx=${(capturedRx * 180 / Math.PI).toFixed(1)}°  ry=${(capturedRy * 180 / Math.PI).toFixed(1)}°`);
+    refreshBadgePanel();
+  } catch (e) {
+    toast('Could not read view state');
+  }
 }
-
-// ── Copy URL ──
-function copyUrl() {
-  const url = currentUsername
-    ? buildUrl(currentUsername, currentYear, currentViz)
-    : window.location.href;
-  navigator.clipboard.writeText(url).then(() => toast('URL copied to clipboard'));
-}
-
-// ── Event: Load button ──
-btnLoad.addEventListener('click', () => {
-  loadPreview(inUsername.value.trim(), inYear.value.trim(), inViz.value);
-});
-
-// ── Event: Enter key in inputs ──
-[inUsername, inYear].forEach(el =>
-  el.addEventListener('keydown', e => {
-    if (e.key === 'Enter') btnLoad.click();
-  })
-);
-
-// ── Event: Viz dropdown changes ──
-inViz.addEventListener('change', () => {
-  currentViz = inViz.value;
-  if (currentUsername) loadPreview(currentUsername, currentYear, currentViz);
-  else syncSidebar(currentViz);
-});
 
 function syncSidebar(viz) {
   document.querySelectorAll('.viz-item').forEach(el =>
@@ -811,14 +851,69 @@ function syncSidebar(viz) {
   );
 }
 
+// ── Copy helpers ──
+function copyUrl() {
+  const url = currentUsername
+    ? buildUrl(currentUsername, currentYear, currentViz, currentTheme, capturedRx, capturedRy)
+    : window.location.href;
+  navigator.clipboard.writeText(url).then(() => toast('URL copied'));
+}
+
+// ── Event: Load button ──
+btnLoad.addEventListener('click', () => {
+  loadPreview(inUsername.value.trim(), inYear.value.trim(), inViz.value, inTheme.value);
+});
+
+// ── Event: Enter key in text inputs ──
+[inUsername, inYear].forEach(el =>
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { btnLoad.click(); }
+  })
+);
+
+// ── Event: Viz dropdown ──
+inViz.addEventListener('change', () => {
+  currentViz = inViz.value;
+  syncSidebar(currentViz);
+  if (currentUsername) {
+    loadPreview(currentUsername, currentYear, currentViz, currentTheme);
+  } else {
+    scheduleBadgeUpdate();
+  }
+});
+
+// ── Event: Theme dropdown ──
+inTheme.addEventListener('change', () => {
+  currentTheme = inTheme.value;
+  if (currentUsername) {
+    loadPreview(currentUsername, currentYear, currentViz, currentTheme);
+  } else {
+    scheduleBadgeUpdate();
+  }
+});
+
+// ── Event: Username / Year input (update badge URLs in real-time) ──
+inUsername.addEventListener('input', () => {
+  currentUsername = inUsername.value.trim();
+  scheduleBadgeUpdate();
+});
+inYear.addEventListener('input', () => {
+  currentYear = inYear.value.trim();
+  scheduleBadgeUpdate();
+});
+
 // ── Event: Sidebar clicks ──
 document.querySelectorAll('.viz-item').forEach(el => {
   el.addEventListener('click', () => {
     const viz = el.dataset.viz;
     inViz.value = viz;
-    currentViz = viz;
-    if (currentUsername) loadPreview(currentUsername, currentYear, viz);
-    else syncSidebar(viz);
+    currentViz  = viz;
+    syncSidebar(viz);
+    if (currentUsername) {
+      loadPreview(currentUsername, currentYear, viz, currentTheme);
+    } else {
+      scheduleBadgeUpdate();
+    }
   });
 });
 
@@ -827,18 +922,29 @@ document.getElementById('btnPrevViz').addEventListener('click', () => {
   const idx = VIZ_TYPES.indexOf(currentViz);
   const viz = VIZ_TYPES[(idx - 1 + VIZ_TYPES.length) % VIZ_TYPES.length];
   inViz.value = viz;
-  currentViz = viz;
-  if (currentUsername) loadPreview(currentUsername, currentYear, viz);
-  else syncSidebar(viz);
+  currentViz  = viz;
+  syncSidebar(viz);
+  if (currentUsername) {
+    loadPreview(currentUsername, currentYear, viz, currentTheme);
+  } else {
+    scheduleBadgeUpdate();
+  }
 });
 document.getElementById('btnNextViz').addEventListener('click', () => {
   const idx = VIZ_TYPES.indexOf(currentViz);
   const viz = VIZ_TYPES[(idx + 1) % VIZ_TYPES.length];
   inViz.value = viz;
-  currentViz = viz;
-  if (currentUsername) loadPreview(currentUsername, currentYear, viz);
-  else syncSidebar(viz);
+  currentViz  = viz;
+  syncSidebar(viz);
+  if (currentUsername) {
+    loadPreview(currentUsername, currentYear, viz, currentTheme);
+  } else {
+    scheduleBadgeUpdate();
+  }
 });
+
+// ── Event: Capture View button ──
+document.getElementById('btnCapture').addEventListener('click', captureView);
 
 // ── Copy URL buttons ──
 document.getElementById('btnCopyUrl').addEventListener('click', copyUrl);
@@ -847,8 +953,9 @@ document.getElementById('btnCopyUrl2').addEventListener('click', copyUrl);
 // ── Badge panel copy buttons ──
 document.getElementById('btnCopyBadgeInteractive').addEventListener('click', () => {
   if (!currentUsername) { return; }
-  navigator.clipboard.writeText(buildUrl(currentUsername, currentYear, currentViz))
-    .then(() => toast('Interactive URL copied'));
+  navigator.clipboard.writeText(
+    buildUrl(currentUsername, currentYear, currentViz, currentTheme, capturedRx, capturedRy)
+  ).then(() => toast('Interactive URL copied'));
 });
 document.getElementById('btnCopyBadgeSvg').addEventListener('click', () => {
   if (!currentSvgUrl) { return; }
@@ -862,20 +969,27 @@ document.getElementById('btnCopyBadgeMd').addEventListener('click', () => {
 // ── Open full view ──
 document.getElementById('lnkOpenFull').addEventListener('click', () => {
   if (!currentUsername) { toast('Load a preview first'); return; }
-  window.open(buildUrl(currentUsername, currentYear, currentViz), '_blank');
+  window.open(
+    buildUrl(currentUsername, currentYear, currentViz, currentTheme, capturedRx, capturedRy),
+    '_blank'
+  );
 });
 
 // ── Restore from query params ──
 (function restoreFromURL() {
   const p = new URLSearchParams(window.location.search);
-  const u = p.get('username');
-  const y = p.get('year');
+  const u = p.get('username') || '';
+  const y = p.get('year') || '';
   const v = p.get('viz') || 'bars3d';
+  const t = p.get('theme') || '';
+  inViz.value   = v;
+  inTheme.value = t;
+  currentViz    = v;
+  currentTheme  = t;
   if (u) {
     inUsername.value = u;
-    if (y) inYear.value = y;
-    inViz.value = v;
-    loadPreview(u, y || '', v);
+    if (y) { inYear.value = y; }
+    loadPreview(u, y, v, t);
   }
 })();
 </script>

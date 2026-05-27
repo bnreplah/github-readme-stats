@@ -1866,7 +1866,9 @@ const DataViz3D = (() => {
     if (__CONFIG__ && __CONFIG__.points && __CONFIG__.points.length > 0) {
       state.vizType = __CONFIG__.vizType || 'bars3d';
       state.points  = __CONFIG__.points;
-      state.autoRotate = true;
+      state.autoRotate = __CONFIG__.autoRotate === true;
+      if (__CONFIG__.rotX !== undefined) { state.rotX = __CONFIG__.rotX; }
+      if (__CONFIG__.rotY !== undefined) { state.rotY = __CONFIG__.rotY; }
       // Sync viz-type button highlight
       document.querySelectorAll('.viz-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.viz === state.vizType)
@@ -1875,7 +1877,7 @@ const DataViz3D = (() => {
       // Update header logo with contribution context
       const logoEl = document.getElementById('appLogo');
       if (logoEl && __CONFIG__.title) logoEl.textContent = __CONFIG__.title;
-      document.getElementById('btnAutoRotate').classList.add('active');
+      document.getElementById('btnAutoRotate').classList.toggle('active', state.autoRotate);
       toast(__CONFIG__.toastMsg || 'Contribution data loaded', 2500);
     } else {
       state.points = generateData('scatter3d', 300, 5);
