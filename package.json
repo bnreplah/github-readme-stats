@@ -19,6 +19,7 @@
     "url": "https://github.com/bnreplah/github-readme-stats.git"
   },
   "scripts": {
+    "debug": "nodemon express.js",
     "run": "node express.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js --coverage",
     "test:watch": "node --experimental-vm-modules node_modules/jest/bin/jest.js --watch",

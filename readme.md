@@ -48,6 +48,7 @@
     - [Showing additional individual stats](#showing-additional-individual-stats)
     - [Showing icons](#showing-icons)
     - [Showing commits count for specified year](#showing-commits-count-for-specified-year)
+    - [Skyline card views](#skyline-card-views)
     - [Themes](#themes)
     - [Customization](#customization)
 - [GitHub Extra Pins](#github-extra-pins)
@@ -151,6 +152,18 @@ You can specify a year and fetch only the commits that were made in that year by
 
 ```md
 ![bnreplah's GitHub stats](https://github-readme-stats.vercel.app/api?username=bnreplah&commits_year=2020)
+```
+
+### Skyline card views
+
+The skyline card supports multiple visual modes via the `&view` parameter.
+
+- `view=skyline` (default): the 3D skyline-style tower graph.
+- `view=city`: a taller, more dramatic 3D cityscape rendition.
+- `view=flat`: the traditional heatmap-style commit grid.
+
+```md
+![bnreplah's GitHub skyline](https://github-readme-stats.vercel.app/api/skyline?username=bnreplah&view=city)
 ```
 
 ### Themes

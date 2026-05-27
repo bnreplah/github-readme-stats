@@ -2,12 +2,19 @@
 
 import axios from "axios";
 import { CustomError, MissingParamError } from "../common/error.js";
+import { fetchSkyline as fetchSkylineWithToken } from "./old.skyline.js";
+
+const hasApiToken = () =>
+  Boolean(process.env.PAT_1 || process.env.GITHUB_TOKEN);
 
 /**
  * Parse contribution days from GitHub's public contribution graph HTML.
  * Handles both attribute orderings GitHub has used over time:
  *   data-count="N" ... data-date="YYYY-MM-DD"
  *   data-date="YYYY-MM-DD" ... data-count="N"
+ *
+ * @param {string} html GitHub contributions page HTML.
+ * @returns {{contributionCount: number, date: string}[]} Contribution day records.
  */
 const parseContributionDays = (html) => {
   const days = [];
@@ -26,6 +33,9 @@ const parseContributionDays = (html) => {
 /**
  * Group sorted contribution days into Sun-Sat weeks,
  * matching GitHub's own contribution calendar column layout.
+ *
+ * @param {{contributionCount: number, date: string}[]} days Sorted contribution days.
+ * @returns {{contributionDays: {contributionCount: number, date: string}[]}[]} Contribution weeks.
  */
 const groupIntoWeeks = (days) => {
   const weeks = [];
@@ -48,7 +58,9 @@ const groupIntoWeeks = (days) => {
     }
   }
 
-  if (week.length > 0) {weeks.push({ contributionDays: week });}
+  if (week.length > 0) {
+    weeks.push({ contributionDays: week });
+  }
 
   return weeks;
 };
@@ -56,7 +68,7 @@ const groupIntoWeeks = (days) => {
 /**
  * Fetch GitHub contribution calendar data for the skyline card.
  *
- * Uses GitHub's public contributions page — no PAT or OAuth token required.
+ * Uses GitHub's public contributions page and falls back to GitHub GraphQL when an API token is configured.
  *
  * @param {string} username GitHub username.
  * @param {string|number|undefined} year Year to fetch (defaults to current year).
@@ -87,7 +99,12 @@ const fetchSkyline = async (username, year) => {
       },
     );
   } catch (err) {
-    if (err.response?.status === 404) {
+    if (hasApiToken()) {
+      return fetchSkylineWithToken(username, year);
+    }
+
+    const error = /** @type {any} */ (err);
+    if (error.response?.status === 404) {
       throw new CustomError(
         `User "${username}" not found.`,
         CustomError.USER_NOT_FOUND,
@@ -102,6 +119,9 @@ const fetchSkyline = async (username, year) => {
   const days = parseContributionDays(res.data);
 
   if (days.length === 0) {
+    if (hasApiToken()) {
+      return fetchSkylineWithToken(username, year);
+    }
     throw new CustomError(
       `No contribution data found for "${username}" in ${targetYear}.`,
       CustomError.USER_NOT_FOUND,

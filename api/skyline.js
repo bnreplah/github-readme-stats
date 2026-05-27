@@ -21,6 +21,7 @@ export default async (req, res) => {
   const {
     username,
     year,
+    view,
     title_color,
     text_color,
     bg_color,
@@ -42,7 +43,9 @@ export default async (req, res) => {
     type: "username",
     colors: { title_color, text_color, bg_color, border_color, theme },
   });
-  if (!access.isPassed) {return access.result;}
+  if (!access.isPassed) {
+    return access.result;
+  }
 
   try {
     const data = await fetchSkyline(username, year);
@@ -57,6 +60,7 @@ export default async (req, res) => {
 
     return res.send(
       renderSkylineCard(data, {
+        view,
         title_color,
         text_color,
         bg_color,
@@ -78,7 +82,11 @@ export default async (req, res) => {
           message: err.message,
           secondaryMessage: retrieveSecondaryMessage(err),
           renderOptions: {
-            title_color, text_color, bg_color, border_color, theme,
+            title_color,
+            text_color,
+            bg_color,
+            border_color,
+            theme,
             show_repo_link: !(err instanceof MissingParamError),
           },
         }),
@@ -87,7 +95,13 @@ export default async (req, res) => {
     return res.send(
       renderError({
         message: "An unknown error occurred",
-        renderOptions: { title_color, text_color, bg_color, border_color, theme },
+        renderOptions: {
+          title_color,
+          text_color,
+          bg_color,
+          border_color,
+          theme,
+        },
       }),
     );
   }
