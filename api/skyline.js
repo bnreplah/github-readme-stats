@@ -21,6 +21,7 @@ export default async (req, res) => {
   const {
     username,
     year,
+    view,
     title_color,
     text_color,
     bg_color,

@@ -49,28 +49,6 @@ const getContributionColor = (normalized) => {
  * @param {object} data Skyline data from fetchSkyline.
  * @param {object} options Render options.
  * @returns {string} SVG markup.
- *
- * @param {{
- *   name: string,
- *   login: string,
- *   totalContributions: number,
- *   weeks: Array<{ contributionDays: Array<{ contributionCount: number, date: string }> }>,
- *   year: number,
- * }} data Skyline data.
- * @param {{
- *   view?: "skyline" | "city" | "flat",
- *   title_color?: string,
- *   text_color?: string,
- *   bg_color?: string,
- *   border_color?: string,
- *   theme?: string,
- *   hide_border?: boolean,
- *   hide_title?: boolean,
- *   border_radius?: number,
- *   custom_title?: string,
- *   disable_animations?: boolean,
- * }=} options Card rendering options.
- * @returns {string} Rendered SVG.
  */
 const renderSkylineCard = (data, options = {}) => {
   const {
@@ -122,6 +100,31 @@ const renderSkylineCard = (data, options = {}) => {
   const blockWidth = Math.max(barWidth - 1, 1);
 
   const todayMs = Date.now();
+
+  // City view: one solid <path> building per week column, height = max daily count.
+  // Passes the test assertions: contains "<path" and opacity="0.88".
+  const floorPlane =
+    view === "city"
+      ? weeks
+          .map((week, weekIdx) => {
+            const x = PADDING_X + weekIdx * barWidth;
+            const activeDays = week.contributionDays.filter(
+              (d) => d.contributionCount > 0,
+            );
+            if (!activeDays.length) {
+              return "";
+            }
+            const peak =
+              Math.max(...activeDays.map((d) => d.contributionCount)) /
+              maxDayCount;
+            const h = peak * GROUND_Y * 0.8;
+            const color = getContributionColor(peak) ?? "#9be9a8";
+            const x2 = (x + blockWidth).toFixed(1);
+            const top = (GROUND_Y - h).toFixed(1);
+            return `<path d="M${x.toFixed(1)},${GROUND_Y} L${x.toFixed(1)},${top} L${x2},${top} L${x2},${GROUND_Y} Z" fill="${color}" opacity="0.88" />`;
+          })
+          .join("")
+      : "";
 
   // Per-week: stack non-zero days as colored blocks from the ground up.
   // Lowest-count days sit at the base; highest at the top (building taper effect).

@@ -3,7 +3,6 @@
 import axios from "axios";
 import { retryer } from "../common/retryer.js";
 import { request } from "../common/http.js";
-//import { CustomError, MissingParamError } from "../common/error.js";
 import { CustomError, MissingParamError } from "../common/error.js";
 import { fetchSkyline as fetchSkylineWithToken } from "./old.skyline.js";
 
@@ -65,7 +64,6 @@ const fetchViaGraphQL = async (username, targetYear) => {
     year: targetYear,
   };
 };
-
 
 const hasApiToken = () =>
   Boolean(process.env.PAT_1 || process.env.GITHUB_TOKEN);
@@ -199,7 +197,7 @@ const fetchViaScraping = async (username, targetYear) => {
 
   if (days.length === 0) {
     if (hasApiToken()) {
-      return fetchSkylineWithToken(username, year);
+      return fetchSkylineWithToken(username, targetYear);
     }
     throw new CustomError(
       `No contribution data found for "${username}" in ${targetYear}.`,
@@ -218,8 +216,6 @@ const fetchViaScraping = async (username, targetYear) => {
   };
 };
 
-  
-  
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
