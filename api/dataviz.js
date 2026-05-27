@@ -5,6 +5,7 @@ import { join } from "path";
 import { fetchSkyline } from "../src/fetchers/skyline.js";
 import { MissingParamError, retrieveSecondaryMessage } from "../src/common/error.js";
 import { renderDatavizSvgCard } from "../src/cards/dataviz-svg.js";
+import { renderDataviz3dSvgCard } from "../src/cards/dataviz-3d-svg.js";
 import { renderError } from "../src/common/render.js";
 import { parseBoolean } from "../src/common/ops.js";
 
@@ -85,6 +86,7 @@ export default async (req, res) => {
     year,
     viz,
     format,
+    mode,
     rx,
     ry,
     auto_rotate,
@@ -102,6 +104,7 @@ export default async (req, res) => {
 
   const vizType = VIZ_TYPES.has(viz) ? viz : "bars3d";
   const isSvg = format === "svg";
+  const is3d = isSvg && mode === "3d";
 
   // ── SVG badge path ──────────────────────────────────────────────────────────
   if (isSvg) {
@@ -133,21 +136,31 @@ export default async (req, res) => {
       );
     }
 
-    return res.send(
-      renderDatavizSvgCard(data, {
-        viz: vizType,
-        title_color,
-        text_color,
-        bg_color,
-        border_color,
-        theme,
-        hide_border: parseBoolean(hide_border),
-        hide_title: parseBoolean(hide_title),
-        custom_title,
-        border_radius,
-        disable_animations: parseBoolean(disable_animations),
-      }),
-    );
+    const svgOpts = {
+      viz: vizType,
+      title_color,
+      text_color,
+      bg_color,
+      border_color,
+      theme,
+      hide_border: parseBoolean(hide_border),
+      hide_title: parseBoolean(hide_title),
+      custom_title,
+      border_radius,
+      disable_animations: parseBoolean(disable_animations),
+    };
+
+    if (is3d) {
+      return res.send(
+        renderDataviz3dSvgCard(data, {
+          ...svgOpts,
+          rotX: rx !== undefined ? parseFloat(String(rx)) : 0.4,
+          rotY: ry !== undefined ? parseFloat(String(ry)) : 0.3,
+        }),
+      );
+    }
+
+    return res.send(renderDatavizSvgCard(data, svgOpts));
   }
 
   // ── Interactive HTML path ───────────────────────────────────────────────────

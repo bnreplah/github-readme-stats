@@ -364,6 +364,49 @@
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* ── Badge mode toggle ── */
+  .badge-mode-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+  .badge-mode-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-right: 4px;
+  }
+  .badge-mode-btn {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 4px 12px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+  .badge-mode-btn.active {
+    border-color: var(--accent1);
+    color: var(--accent1);
+    background: rgba(0,245,212,0.08);
+  }
+  .badge-mode-btn:hover:not(.active) { border-color: var(--accent4); color: var(--accent4); }
+  .badge-3d-hint {
+    font-family: var(--mono);
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-left: 6px;
+    opacity: 0.7;
+  }
+
   /* ── Badge panel ── */
   .badge-panel {
     display: none;
@@ -634,6 +677,13 @@
     <!-- Badge / embed panel — shown after first successful load -->
     <div class="badge-panel" id="badgePanel">
       <div class="badge-panel-title">README Badge &amp; Embed</div>
+      <!-- 2D / 3D mode selector -->
+      <div class="badge-mode-row">
+        <span class="badge-mode-label">Badge Style</span>
+        <button class="badge-mode-btn active" id="btnMode2d">2D Flat</button>
+        <button class="badge-mode-btn" id="btnMode3d">3D Projected</button>
+        <span class="badge-3d-hint" id="hint3d" style="display:none;">Use ⊕ Capture View to set the angle</span>
+      </div>
       <div class="badge-row">
         <span class="badge-row-label">Interactive</span>
         <span class="badge-row-value" id="bInteractiveUrl"></span>
@@ -683,6 +733,7 @@ let currentSvgUrl   = '';
 let currentMarkdown = '';
 let capturedRx      = null; // rotX captured from iframe (radians)
 let capturedRy      = null; // rotY captured from iframe (radians)
+let badgeMode       = '2d'; // '2d' | '3d'
 let previewLoaded   = false;
 let badgeDebounce   = null;
 
@@ -727,6 +778,14 @@ function buildSvgUrl(username, year, viz, theme) {
   if (year)  params.set('year', year);
   if (viz && viz !== 'bars3d') params.set('viz', viz);
   if (theme) params.set('theme', theme);
+  if (badgeMode === '3d') {
+    params.set('mode', '3d');
+    // Use captured angle or sensible defaults matching the canvas defaults
+    const rx = capturedRx ?? 0.4;
+    const ry = capturedRy ?? 0.3;
+    params.set('rx', rx.toFixed(3));
+    params.set('ry', ry.toFixed(3));
+  }
   return `${base}?${params}`;
 }
 
@@ -839,7 +898,9 @@ function captureView() {
     capturedRx = iState.rotX;
     capturedRy = iState.rotY;
     toast(`View captured  rx=${(capturedRx * 180 / Math.PI).toFixed(1)}°  ry=${(capturedRy * 180 / Math.PI).toFixed(1)}°`);
-    refreshBadgePanel();
+    // Auto-switch to 3D badge mode so the captured angle is immediately reflected
+    if (badgeMode !== '3d') { setBadgeMode('3d'); }
+    else { refreshBadgePanel(); }
   } catch (e) {
     toast('Could not read view state');
   }
@@ -965,6 +1026,17 @@ document.getElementById('btnCopyBadgeMd').addEventListener('click', () => {
   if (!currentMarkdown) { return; }
   navigator.clipboard.writeText(currentMarkdown).then(() => toast('Markdown snippet copied'));
 });
+
+// ── Badge mode toggle (2D / 3D) ──
+function setBadgeMode(mode) {
+  badgeMode = mode;
+  document.getElementById('btnMode2d').classList.toggle('active', mode === '2d');
+  document.getElementById('btnMode3d').classList.toggle('active', mode === '3d');
+  document.getElementById('hint3d').style.display = mode === '3d' ? 'inline' : 'none';
+  scheduleBadgeUpdate();
+}
+document.getElementById('btnMode2d').addEventListener('click', () => setBadgeMode('2d'));
+document.getElementById('btnMode3d').addEventListener('click', () => setBadgeMode('3d'));
 
 // ── Open full view ──
 document.getElementById('lnkOpenFull').addEventListener('click', () => {
