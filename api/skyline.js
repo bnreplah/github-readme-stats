@@ -21,7 +21,6 @@ export default async (req, res) => {
   const {
     username,
     year,
-    view,
     title_color,
     text_color,
     bg_color,
@@ -41,7 +40,13 @@ export default async (req, res) => {
     res,
     id: username,
     type: "username",
-    colors: { title_color, text_color, bg_color, border_color, theme },
+    colors: {
+      title_color,
+      text_color,
+      bg_color,
+      border_color,
+      theme,
+    },
   });
   if (!access.isPassed) {
     return access.result;

@@ -19,13 +19,10 @@ const MONTH_LABELS = [
   "Dec",
 ];
 
-/**
- * @param {number} normalized Normalized contribution intensity.
- * @returns {string} Contribution block color.
- */
+// Color levels matching gh-skyline thresholds (LowThreshold=0.33, MediumThreshold=0.66)
 const getContributionColor = (normalized) => {
   if (normalized <= 0) {
-    return "#ebedf0";
+    return null;
   }
   if (normalized < 0.33) {
     return "#9be9a8";
@@ -40,6 +37,19 @@ const getContributionColor = (normalized) => {
 };
 
 /**
+ * Render the GitHub Skyline SVG card.
+ *
+ * For each week, non-zero contribution days are stacked as colored blocks
+ * from the ground up -- mirroring gh-skyline's day-sorting logic where
+ * active days cluster at the base to form a city-skyline silhouette.
+ * Color intensity per block matches the day's contribution count relative
+ * to the yearly maximum, using the same 0.33/0.66/0.85 thresholds as
+ * gh-skyline's LowThreshold / MediumThreshold constants.
+ *
+ * @param {object} data Skyline data from fetchSkyline.
+ * @param {object} options Render options.
+ * @returns {string} SVG markup.
+ *
  * @param {{
  *   name: string,
  *   login: string,
@@ -92,202 +102,70 @@ const renderSkylineCard = (data, options = {}) => {
   const CARD_WIDTH = 495;
   const CARD_HEIGHT = 185;
   const PADDING_X = 25;
+
+  // Body-relative coordinates (Card body starts at translate(0, 55) when title shown)
   const GROUND_Y = 95;
+  const BLOCK_HEIGHT = 10;
+  const BLOCK_GAP = 1;
+  const BLOCK_UNIT = BLOCK_HEIGHT + BLOCK_GAP;
   const MONTH_LABEL_Y = GROUND_Y + 15;
 
-  const weekTotals = weeks.map((week) =>
-    week.contributionDays.reduce(
-      /**
-       * @param {number} sum Accumulated contribution total.
-       * @param {{ contributionCount: number }} day Contribution day object.
-       * @returns {number} New accumulated total.
-       */
-      (sum, day) => sum + day.contributionCount,
-      0,
-    ),
-  );
-  const maxWeekTotal = Math.max(...weekTotals, 1);
-
-  const usableWidth = CARD_WIDTH - 2 * PADDING_X;
-  const numWeeks = Math.max(weeks.length, 1);
-  const barWidth = usableWidth / numWeeks;
-  const blockWidth = Math.max(barWidth - 1, 1);
-  const depth = Math.min(14, blockWidth * 0.6);
-
-  /**
-   * @param {number} normalized Normalized contribution intensity.
-   * @returns {string} Side-face color.
-   */
-  const getSkylineSideColor = (normalized) => {
-    if (normalized <= 0) {
-      return "#dfe4e8";
-    }
-    if (normalized < 0.33) {
-      return "#77d787";
-    }
-    if (normalized < 0.66) {
-      return "#2d9d43";
-    }
-    if (normalized < 0.85) {
-      return "#24823f";
-    }
-    return "#1d5931";
-  };
-
-  const selectedView = view?.toString().toLowerCase() ?? "skyline";
-  const isFlatView = selectedView === "flat";
-  const isCityView = selectedView === "city";
-
+  // Max daily contribution count for normalizing block colors
   const maxDayCount = Math.max(
-    ...weeks.flatMap((week) =>
-      week.contributionDays.map((day) => day.contributionCount),
-    ),
+    ...weeks.flatMap((w) => w.contributionDays.map((d) => d.contributionCount)),
     1,
   );
 
-  const renderFlatView = () => {
-    const cellSize = Math.max(Math.min(barWidth - 1, 10), 3);
-    const cellGap = 1.5;
-    const topOffset = 35;
+  const usableWidth = CARD_WIDTH - 2 * PADDING_X;
+  const numWeeks = weeks.length;
+  const barWidth = usableWidth / numWeeks;
+  const blockWidth = Math.max(barWidth - 1, 1);
 
-    return weeks
-      .map((week, weekIdx) => {
-        const x = PADDING_X + weekIdx * barWidth;
-        return week.contributionDays
-          .map((day, dayIdx) => {
-            const color = getContributionColor(
-              day.contributionCount / maxDayCount,
-            );
-            const y = topOffset + dayIdx * (cellSize + cellGap);
-            return `
-              <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${cellSize.toFixed(
-                1,
-              )}" height="${cellSize.toFixed(1)}" rx="2" ry="2" fill="${color}" />`;
-          })
-          .join("");
-      })
-      .join("");
-  };
+  const todayMs = Date.now();
 
-  const renderSkylineView = () =>
-    weeks
-      .map((week, weekIdx) => {
-        const x = PADDING_X + weekIdx * barWidth;
-        const total = weekTotals[weekIdx];
-        const normalized = total / maxWeekTotal;
-        const color = getContributionColor(normalized);
-        const sideColor = getSkylineSideColor(normalized);
-        const height = Math.max(normalized * 70, 4);
-        const y = GROUND_Y - height;
-        const topY = y - depth * 0.35;
-        const xOffset = depth;
+  // Per-week: stack non-zero days as colored blocks from the ground up.
+  // Lowest-count days sit at the base; highest at the top (building taper effect).
+  const blocks = weeks
+    .map((week, weekIdx) => {
+      const x = PADDING_X + weekIdx * barWidth;
 
-        const topFace = `
-          <path d="M${x.toFixed(1)} ${y.toFixed(1)} L${(x + blockWidth).toFixed(
-            1,
-          )} ${y.toFixed(1)} L${(x + blockWidth + xOffset).toFixed(
-            1,
-          )} ${topY.toFixed(1)} L${(x + xOffset).toFixed(1)} ${topY.toFixed(1)} Z" fill="${color}" />`;
+      const activeDays = week.contributionDays
+        .filter((d) => {
+          if (d.contributionCount <= 0) {
+            return false;
+          }
+          const parts = d.date.split("-");
+          const dateMs = Date.UTC(
+            parseInt(parts[0], 10),
+            parseInt(parts[1], 10) - 1,
+            parseInt(parts[2], 10),
+          );
+          return dateMs <= todayMs;
+        })
+        .sort((a, b) => a.contributionCount - b.contributionCount);
 
-        const rightFace = `
-          <path d="M${(x + blockWidth).toFixed(1)} ${y.toFixed(1)} L${(
-            x +
-            blockWidth +
-            xOffset
-          ).toFixed(1)} ${topY.toFixed(1)} L${(
-            x +
-            blockWidth +
-            xOffset
-          ).toFixed(1)} ${(GROUND_Y - depth * 0.35).toFixed(1)} L${(
-            x + blockWidth
-          ).toFixed(
-            1,
-          )} ${GROUND_Y.toFixed(1)} Z" fill="${sideColor}" opacity="0.92" />`;
+      return activeDays
+        .map((day, stackIdx) => {
+          const normalized = day.contributionCount / maxDayCount;
+          const color = getContributionColor(normalized);
+          if (!color) {
+            return "";
+          }
+          const blockY = GROUND_Y - (stackIdx + 1) * BLOCK_UNIT;
+          return `<rect x="${x.toFixed(1)}" y="${blockY}" width="${blockWidth.toFixed(1)}" height="${BLOCK_HEIGHT}" fill="${color}" rx="1" />`;
+        })
+        .join("");
+    })
+    .join("");
 
-        const frontFace = `
-          <path d="M${x.toFixed(1)} ${y.toFixed(1)} L${(x + blockWidth).toFixed(
-            1,
-          )} ${y.toFixed(1)} L${(x + blockWidth).toFixed(
-            1,
-          )} ${GROUND_Y.toFixed(1)} L${x.toFixed(1)} ${GROUND_Y.toFixed(1)} Z" fill="${color}" opacity="0.96" />`;
+  const groundLine = `<line x1="${PADDING_X}" y1="${GROUND_Y}" x2="${CARD_WIDTH - PADDING_X}" y2="${GROUND_Y}" stroke="${borderColor}" stroke-width="0.5" opacity="0.4" />`;
 
-        return `${topFace}${rightFace}${frontFace}`;
-      })
-      .join("");
-
-  const renderCityView = () =>
-    weeks
-      .map((week, weekIdx) => {
-        const x = PADDING_X + weekIdx * barWidth;
-        const total = weekTotals[weekIdx];
-        const normalized = total / maxWeekTotal;
-        const color = getContributionColor(normalized);
-        const sideColor = getSkylineSideColor(normalized);
-        const height = Math.max(normalized * 90, 6);
-        const y = GROUND_Y - height;
-        const topY = y - depth * 0.45;
-        const xOffset = Math.max(depth * 1.4, 16);
-
-        const topFace = `
-          <path d="M${x.toFixed(1)} ${y.toFixed(1)} L${(x + blockWidth).toFixed(
-            1,
-          )} ${y.toFixed(1)} L${(x + blockWidth + xOffset).toFixed(
-            1,
-          )} ${topY.toFixed(1)} L${(x + xOffset).toFixed(1)} ${topY.toFixed(1)} Z" fill="${color}" opacity="0.95" />`;
-
-        const rightFace = `
-          <path d="M${(x + blockWidth).toFixed(1)} ${y.toFixed(1)} L${(
-            x +
-            blockWidth +
-            xOffset
-          ).toFixed(1)} ${topY.toFixed(1)} L${(
-            x +
-            blockWidth +
-            xOffset
-          ).toFixed(1)} ${(GROUND_Y - xOffset * 0.35).toFixed(1)} L${(
-            x + blockWidth
-          ).toFixed(
-            1,
-          )} ${GROUND_Y.toFixed(1)} Z" fill="${sideColor}" opacity="0.88" />`;
-
-        const frontFace = `
-          <path d="M${x.toFixed(1)} ${y.toFixed(1)} L${(x + blockWidth).toFixed(
-            1,
-          )} ${y.toFixed(1)} L${(x + blockWidth).toFixed(
-            1,
-          )} ${GROUND_Y.toFixed(1)} L${x.toFixed(1)} ${GROUND_Y.toFixed(1)} Z" fill="${color}" opacity="0.92" />`;
-
-        return `${topFace}${rightFace}${frontFace}`;
-      })
-      .join("");
-
-  const blocks = isFlatView
-    ? renderFlatView()
-    : isCityView
-      ? renderCityView()
-      : renderSkylineView();
-
-  const floorPlane = isFlatView
-    ? ""
-    : `<path d="M${PADDING_X} ${GROUND_Y} L${PADDING_X + depth} ${(
-        GROUND_Y -
-        depth * 0.35
-      ).toFixed(1)} L${(CARD_WIDTH - PADDING_X + depth).toFixed(1)} ${(
-        GROUND_Y -
-        depth * 0.35
-      ).toFixed(
-        1,
-      )} L${CARD_WIDTH - PADDING_X} ${GROUND_Y} Z" fill="${borderColor}" opacity="0.08" />`;
-
-  const groundLine = isFlatView
-    ? ""
-    : `<line x1="${PADDING_X}" y1="${GROUND_Y}" x2="${CARD_WIDTH - PADDING_X}" y2="${GROUND_Y}" stroke="${borderColor}" stroke-width="0.5" opacity="0.4" />`;
-
+  // One label per month transition, using date string parsing to avoid timezone drift
   let lastMonth = -1;
   const monthLabels = weeks
     .map((week, weekIdx) => {
       if (!week.contributionDays.length) {
-        ("");
+        return "";
       }
       const parts = week.contributionDays[0].date.split("-");
       const month = parseInt(parts[1], 10) - 1;
@@ -300,6 +178,7 @@ const renderSkylineCard = (data, options = {}) => {
     })
     .join("");
 
+  // Year and total contributions summary (top-right of body, above the chart)
   const summaryLabel = `<text x="${CARD_WIDTH - PADDING_X}" y="5" fill="${textColor}" font-size="10" font-family="'Segoe UI', Ubuntu, Sans-Serif" text-anchor="end" opacity="0.6">${year} &#xB7; ${totalContributions.toLocaleString()} contributions</text>`;
 
   const card = new Card({
@@ -308,9 +187,14 @@ const renderSkylineCard = (data, options = {}) => {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     border_radius,
-    colors: { titleColor, textColor, bgColor, borderColor },
+    colors: {
+      titleColor,
+      textColor,
+      bgColor,
+      borderColor,
+    },
   });
-  //return
+
   card.setHideBorder(hide_border);
   card.setHideTitle(hide_title);
   card.setAccessibilityLabel({
