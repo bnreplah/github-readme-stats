@@ -31,9 +31,32 @@ const getContributionColor = (normalized) => {
  * @param {object} data Skyline data from fetchSkyline.
  * @param {object} options Render options.
  * @returns {string} SVG markup.
+ *
+ * @param {{
+ *   name: string,
+ *   login: string,
+ *   totalContributions: number,
+ *   weeks: Array<{ contributionDays: Array<{ contributionCount: number, date: string }> }>,
+ *   year: number,
+ * }} data Skyline data.
+ * @param {{
+ *   view?: "skyline" | "city" | "flat",
+ *   title_color?: string,
+ *   text_color?: string,
+ *   bg_color?: string,
+ *   border_color?: string,
+ *   theme?: string,
+ *   hide_border?: boolean,
+ *   hide_title?: boolean,
+ *   border_radius?: number,
+ *   custom_title?: string,
+ *   disable_animations?: boolean,
+ * }=} options Card rendering options.
+ * @returns {string} Rendered SVG.
  */
 const renderSkylineCard = (data, options = {}) => {
   const {
+    view = "skyline",
     title_color,
     text_color,
     bg_color,
@@ -159,6 +182,7 @@ const renderSkylineCard = (data, options = {}) => {
 
   return card.render(`
     ${summaryLabel}
+    ${floorPlane}
     ${blocks}
     ${groundLine}
     ${monthLabels}

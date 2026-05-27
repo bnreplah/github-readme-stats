@@ -65,6 +65,7 @@ export default async (req, res) => {
 
     return res.send(
       renderSkylineCard(data, {
+        view,
         title_color,
         text_color,
         bg_color,

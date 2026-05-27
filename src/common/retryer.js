@@ -5,11 +5,27 @@ import { logger } from "./log.js";
 
 // Script variables.
 
-// Count the number of GitHub API tokens available.
-const PATs = Object.keys(process.env).filter((key) =>
-  /PAT_\d*$/.exec(key),
-).length;
-const RETRIES = process.env.NODE_ENV === "test" ? 7 : PATs;
+// Collect available GitHub API tokens from environment variables.
+const getTokens = () => {
+  const tokens = Object.keys(process.env)
+    .filter((key) => /PAT_\d+$/.exec(key))
+    .sort((a, b) => {
+      const aNumber = parseInt(a.replace(/^PAT_/, ""), 10);
+      const bNumber = parseInt(b.replace(/^PAT_/, ""), 10);
+      return aNumber - bNumber;
+    })
+    .map((key) => process.env[key])
+    .filter(Boolean);
+
+  if (process.env.GITHUB_TOKEN) {
+    tokens.push(process.env.GITHUB_TOKEN);
+  }
+
+  return tokens;
+};
+
+const TOKENS = getTokens();
+const RETRIES = process.env.NODE_ENV === "test" ? 7 : TOKENS.length;
 
 /**
  * @typedef {import("axios").AxiosResponse} AxiosResponse Axios response.
@@ -40,8 +56,7 @@ const retryer = async (fetcher, variables, retries = 0) => {
     // try to fetch with the first token since RETRIES is 0 index i'm adding +1
     let response = await fetcher(
       variables,
-      // @ts-ignore
-      process.env[`PAT_${retries + 1}`],
+      TOKENS[retries],
       // used in tests for faking rate limit
       retries,
     );

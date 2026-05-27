@@ -7,6 +7,7 @@ import gistCard from "./api/gist.js";
 import skylineCard from "./api/skyline.js";
 import datavizCard from "./api/dataviz.js";
 import express from "express";
+import skylineCard from "./api/skyline.js";
 
 const app = express();
 const router = express.Router();

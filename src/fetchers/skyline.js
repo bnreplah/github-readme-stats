@@ -3,7 +3,9 @@
 import axios from "axios";
 import { retryer } from "../common/retryer.js";
 import { request } from "../common/http.js";
+//import { CustomError, MissingParamError } from "../common/error.js";
 import { CustomError, MissingParamError } from "../common/error.js";
+import { fetchSkyline as fetchSkylineWithToken } from "./old.skyline.js";
 
 // ---------------------------------------------------------------------------
 // GraphQL path (used when PAT_1 is configured — optional, never required)
@@ -62,14 +64,18 @@ const fetchViaGraphQL = async (username, targetYear) => {
   };
 };
 
-// ---------------------------------------------------------------------------
-// Scraping path (no token required — parses GitHub's public profile page)
-// ---------------------------------------------------------------------------
+
+const hasApiToken = () =>
+  Boolean(process.env.PAT_1 || process.env.GITHUB_TOKEN);
 
 /**
- * Parse contribution days out of GitHub's public contribution graph HTML.
- * Handles both attribute orderings and both the old SVG rect format and
- * the newer table-cell format GitHub has used over time.
+ * Parse contribution days from GitHub's public contribution graph HTML.
+ * Handles both attribute orderings GitHub has used over time:
+ *   data-count="N" ... data-date="YYYY-MM-DD"
+ *   data-date="YYYY-MM-DD" ... data-count="N"
+ *
+ * @param {string} html GitHub contributions page HTML.
+ * @returns {{contributionCount: number, date: string}[]} Contribution day records.
  */
 const parseContributionDays = (html) => {
   const days = [];
@@ -100,8 +106,11 @@ const parseContributionDays = (html) => {
 };
 
 /**
- * Group sorted contribution days into Sun–Sat weeks,
- * matching GitHub's contribution calendar column layout.
+ * Group sorted contribution days into Sun-Sat weeks,
+ * matching GitHub's own contribution calendar column layout.
+ *
+ * @param {{contributionCount: number, date: string}[]} days Sorted contribution days.
+ * @returns {{contributionDays: {contributionCount: number, date: string}[]}[]} Contribution weeks.
  */
 const groupIntoWeeks = (days) => {
   const weeks = [];
@@ -155,7 +164,7 @@ const fetchViaScraping = async (username, targetYear) => {
       );
     }
     throw new CustomError(
-      `GitHub returned HTTP ${status ?? "network error"} for ${username}'s contributions. Try adding a PAT_1 env var to use the authenticated API instead.`,
+      `Failed to reach GitHub. Please try again later; GitHub returned HTTP ${status ?? "network error"} for ${username}'s contributions. Try adding a PAT_1 env var to use the authenticated API instead.`,
       CustomError.GRAPHQL_ERROR,
     );
   }
@@ -163,9 +172,12 @@ const fetchViaScraping = async (username, targetYear) => {
   const days = parseContributionDays(res.data);
 
   if (days.length === 0) {
+    if (hasApiToken()) {
+      return fetchSkylineWithToken(username, year);
+    }
     throw new CustomError(
-      `Could not parse contribution data for "${username}" in ${targetYear}. GitHub may have changed their HTML — try adding a PAT_1 env var.`,
-      CustomError.GRAPHQL_ERROR,
+      `No contribution data found for "${username}" in ${targetYear}.`,
+      CustomError.USER_NOT_FOUND,
     );
   }
 
@@ -180,6 +192,8 @@ const fetchViaScraping = async (username, targetYear) => {
   };
 };
 
+  
+  
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------

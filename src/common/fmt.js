@@ -1,8 +1,8 @@
+/* eslint-disable no-use-before-define */
 // @ts-check
-
-import wrap from "word-wrap";
+//import wrap from "word-wrap";
 import { encodeHTML } from "./html.js";
-
+let wrapped = [];
 /**
  * Retrieves num with suffix k(thousands) precise to given decimal places.
  *
@@ -65,14 +65,10 @@ const wrapTextMultiline = (text, width = 59, maxLines = 3) => {
   const encoded = encodeHTML(text);
   const isChinese = encoded.includes(fullWidthComma);
 
-  let wrapped = [];
-
   if (isChinese) {
     wrapped = encoded.split(fullWidthComma); // Chinese full punctuation
   } else {
-    wrapped = wrap(encoded, {
-      width,
-    }).split("\n"); // Split wrapped lines to get an array of lines
+    wrapped = wrapLines(encoded, width);
   }
 
   const lines = wrapped.map((line) => line.trim()).slice(0, maxLines); // Only consider maxLines lines
@@ -85,6 +81,41 @@ const wrapTextMultiline = (text, width = 59, maxLines = 3) => {
   // Remove empty lines if text fits in less than maxLines lines
   const multiLineText = lines.filter(Boolean);
   return multiLineText;
+};
+
+const wrapLines = (
+  /** @type {string} */ text,
+  /** @type {number | undefined} */ width,
+) => {
+  const words = text.split(/\s+/);
+  const lines = [];
+  let current = "";
+
+  for (const word of words) {
+    if (!word) {
+      continue;
+    }
+
+    if (!current) {
+      current = word;
+    } else if (current.length + 1 + word.length <= width) {
+      current += ` ${word}`;
+    } else {
+      lines.push(current);
+      current = word;
+    }
+
+    while (current.length > width) {
+      lines.push(current.slice(0, width));
+      current = current.slice(width);
+    }
+  }
+
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines;
 };
 
 export { kFormatter, formatBytes, wrapTextMultiline };
