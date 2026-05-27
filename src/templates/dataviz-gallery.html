@@ -364,6 +364,108 @@
   }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+  /* ── Badge panel ── */
+  .badge-panel {
+    display: none;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    padding: 10px 20px 12px;
+    flex-direction: column;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+  .badge-panel.visible { display: flex; }
+  .badge-panel-title {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .badge-panel-title::before {
+    content: '';
+    width: 3px; height: 9px;
+    background: var(--accent5);
+    flex-shrink: 0;
+  }
+  .badge-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .badge-row-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    width: 80px;
+    flex-shrink: 0;
+  }
+  .badge-row-value {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent1);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    opacity: 0.85;
+    cursor: text;
+    user-select: all;
+  }
+  .badge-row-value.markdown { color: var(--accent5); }
+  .btn-badge-copy {
+    font-family: var(--mono);
+    font-size: 9px;
+    padding: 3px 9px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .btn-badge-copy:hover { border-color: var(--accent1); color: var(--accent1); }
+  .badge-preview-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 6px;
+    border-top: 1px solid var(--border);
+    margin-top: 2px;
+  }
+  .badge-preview-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    width: 80px;
+    flex-shrink: 0;
+  }
+  #badgePreviewImg {
+    height: 44px;
+    width: auto;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    display: none;
+    max-width: 300px;
+  }
+  #badgePreviewStatus {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
   /* ── Responsive ── */
   @media (max-width: 600px) {
     .sidebar { display: none; }
@@ -511,6 +613,31 @@
         <div class="empty-text">Enter a username above<br>and click Load Preview</div>
       </div>
     </div>
+
+    <!-- Badge / embed panel — shown after first successful load -->
+    <div class="badge-panel" id="badgePanel">
+      <div class="badge-panel-title">README Badge &amp; Embed</div>
+      <div class="badge-row">
+        <span class="badge-row-label">Interactive</span>
+        <span class="badge-row-value" id="bInteractiveUrl"></span>
+        <button class="btn-badge-copy" id="btnCopyBadgeInteractive">Copy</button>
+      </div>
+      <div class="badge-row">
+        <span class="badge-row-label">SVG Badge</span>
+        <span class="badge-row-value" id="bSvgUrl"></span>
+        <button class="btn-badge-copy" id="btnCopyBadgeSvg">Copy</button>
+      </div>
+      <div class="badge-row">
+        <span class="badge-row-label">Markdown</span>
+        <span class="badge-row-value markdown" id="bMarkdown"></span>
+        <button class="btn-badge-copy" id="btnCopyBadgeMd">Copy</button>
+      </div>
+      <div class="badge-preview-row">
+        <span class="badge-preview-label">Badge Preview</span>
+        <img id="badgePreviewImg" alt="SVG badge preview" src="">
+        <span id="badgePreviewStatus">—</span>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -533,6 +660,8 @@ const VIZ_NAMES = {
 let currentViz = 'bars3d';
 let currentUsername = '';
 let currentYear = '';
+let currentSvgUrl = '';
+let currentMarkdown = '';
 let previewLoaded = false;
 
 // ── Elements ──
@@ -556,10 +685,18 @@ function toast(msg, dur = 2200) {
   setTimeout(() => el.classList.remove('show'), dur);
 }
 
-// ── Build URL ──
+// ── Build URLs ──
 function buildUrl(username, year, viz) {
   const base = window.location.origin + '/api/dataviz';
   const params = new URLSearchParams({ username });
+  if (year) params.set('year', year);
+  if (viz && viz !== 'bars3d') params.set('viz', viz);
+  return `${base}?${params}`;
+}
+
+function buildSvgUrl(username, year, viz) {
+  const base = window.location.origin + '/api/dataviz';
+  const params = new URLSearchParams({ username, format: 'svg' });
   if (year) params.set('year', year);
   if (viz && viz !== 'bars3d') params.set('viz', viz);
   return `${base}?${params}`;
@@ -607,6 +744,38 @@ function loadPreview(username, year, viz) {
     el.classList.toggle('active', el.dataset.viz === viz)
   );
   inViz.value = viz;
+
+  // Update badge panel
+  updateBadgePanel(username, year, viz);
+}
+
+// ── Badge panel ──
+function updateBadgePanel(username, year, viz) {
+  const interactiveUrl = buildUrl(username, year, viz);
+  const svgUrl = buildSvgUrl(username, year, viz);
+  const markdown = `[![DataViz3D](${svgUrl})](${interactiveUrl})`;
+
+  currentSvgUrl = svgUrl;
+  currentMarkdown = markdown;
+
+  document.getElementById('bInteractiveUrl').textContent = interactiveUrl;
+  document.getElementById('bSvgUrl').textContent = svgUrl;
+  document.getElementById('bMarkdown').textContent = markdown;
+  document.getElementById('badgePanel').classList.add('visible');
+
+  // Load badge image preview
+  const img = document.getElementById('badgePreviewImg');
+  const status = document.getElementById('badgePreviewStatus');
+  img.style.display = 'none';
+  status.textContent = 'Loading…';
+  img.onload = () => {
+    img.style.display = 'block';
+    status.textContent = '';
+  };
+  img.onerror = () => {
+    status.textContent = 'Preview unavailable';
+  };
+  img.src = svgUrl;
 }
 
 // ── Copy URL ──
@@ -674,6 +843,21 @@ document.getElementById('btnNextViz').addEventListener('click', () => {
 // ── Copy URL buttons ──
 document.getElementById('btnCopyUrl').addEventListener('click', copyUrl);
 document.getElementById('btnCopyUrl2').addEventListener('click', copyUrl);
+
+// ── Badge panel copy buttons ──
+document.getElementById('btnCopyBadgeInteractive').addEventListener('click', () => {
+  if (!currentUsername) { return; }
+  navigator.clipboard.writeText(buildUrl(currentUsername, currentYear, currentViz))
+    .then(() => toast('Interactive URL copied'));
+});
+document.getElementById('btnCopyBadgeSvg').addEventListener('click', () => {
+  if (!currentSvgUrl) { return; }
+  navigator.clipboard.writeText(currentSvgUrl).then(() => toast('SVG badge URL copied'));
+});
+document.getElementById('btnCopyBadgeMd').addEventListener('click', () => {
+  if (!currentMarkdown) { return; }
+  navigator.clipboard.writeText(currentMarkdown).then(() => toast('Markdown snippet copied'));
+});
 
 // ── Open full view ──
 document.getElementById('lnkOpenFull').addEventListener('click', () => {

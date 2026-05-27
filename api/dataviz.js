@@ -3,7 +3,10 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { fetchSkyline } from "../src/fetchers/skyline.js";
-import { MissingParamError } from "../src/common/error.js";
+import { MissingParamError, retrieveSecondaryMessage } from "../src/common/error.js";
+import { renderDatavizSvgCard } from "../src/cards/dataviz-svg.js";
+import { renderError } from "../src/common/render.js";
+import { parseBoolean } from "../src/common/ops.js";
 
 const TEMPLATE_PATH = join(process.cwd(), "src/templates/dataviz.html");
 const CONFIG_PLACEHOLDER = "const __CONFIG__ = null; /* __DATAVIZ_CONFIG__ */";
@@ -51,30 +54,100 @@ function buildPoints(data) {
   return points;
 }
 
+const VIZ_TYPES = new Set([
+  "scatter3d",
+  "bars3d",
+  "surface",
+  "helix",
+  "network",
+  "particles",
+  "spiral",
+  "terrain",
+  "constellation",
+  "voxels",
+]);
+
 /**
- * Serves the DataViz3D interactive HTML page pre-loaded with GitHub contribution data.
+ * Serves GitHub contribution data as an interactive HTML page or a static SVG badge.
+ *
+ * Add `?format=svg` to receive an `image/svg+xml` response suitable for embedding
+ * in GitHub READMEs via Markdown image syntax.  Without that parameter the response
+ * is the full DataViz3D interactive Canvas application.
+ *
  * @param {object} req - Express request.
  * @param {object} res - Express response.
- * @returns {Promise<void>} Sends HTML response.
+ * @returns {Promise<void>} Sends HTML or SVG response.
  */
 // @ts-ignore
 export default async (req, res) => {
-  const { username, year, viz } = req.query;
+  const {
+    username,
+    year,
+    viz,
+    format,
+    title_color,
+    text_color,
+    bg_color,
+    border_color,
+    theme,
+    hide_border,
+    hide_title,
+    custom_title,
+    border_radius,
+    disable_animations,
+  } = req.query;
 
-  const VIZ_TYPES = new Set([
-    "scatter3d",
-    "bars3d",
-    "surface",
-    "helix",
-    "network",
-    "particles",
-    "spiral",
-    "terrain",
-    "constellation",
-    "voxels",
-  ]);
   const vizType = VIZ_TYPES.has(viz) ? viz : "bars3d";
+  const isSvg = format === "svg";
 
+  // ── SVG badge path ──────────────────────────────────────────────────────────
+  if (isSvg) {
+    res.setHeader("Content-Type", "image/svg+xml");
+    res.setHeader("Cache-Control", "public, max-age=1800, s-maxage=1800");
+
+    if (!username) {
+      const err = new MissingParamError(["username"]);
+      return res.send(
+        renderError({
+          message: err.message,
+          renderOptions: { title_color, text_color, bg_color, border_color, theme },
+        }),
+      );
+    }
+
+    let data;
+    try {
+      data = await fetchSkyline(username, year);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Failed to fetch contribution data.";
+      return res.send(
+        renderError({
+          message: msg,
+          secondaryMessage: retrieveSecondaryMessage(err),
+          renderOptions: { title_color, text_color, bg_color, border_color, theme },
+        }),
+      );
+    }
+
+    return res.send(
+      renderDatavizSvgCard(data, {
+        viz: vizType,
+        title_color,
+        text_color,
+        bg_color,
+        border_color,
+        theme,
+        hide_border: parseBoolean(hide_border),
+        hide_title: parseBoolean(hide_title),
+        custom_title,
+        border_radius,
+        disable_animations: parseBoolean(disable_animations),
+      }),
+    );
+  }
+
+  // ── Interactive HTML path ───────────────────────────────────────────────────
   res.setHeader("Content-Type", "text/html; charset=utf-8");
   res.setHeader("Cache-Control", "public, max-age=3600, s-maxage=3600");
 
