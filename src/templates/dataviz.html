@@ -220,7 +220,17 @@
   .palette-swatch:hover { transform: scale(1.1); border-color: #fff3; }
   .palette-swatch.active { border-color: #fff; transform: scale(1.15); }
 
-  /* Data input area */
+  /* ── Contribution-data mode: hide controls that replace/resize the dataset ── */
+  body.contrib-mode #btnRandom,
+  body.contrib-mode #ctrlCount,
+  body.contrib-mode #ctrlSpread,
+  body.contrib-mode #lblCount,
+  body.contrib-mode #lblCountRow,
+  body.contrib-mode #lblSpread,
+  body.contrib-mode #lblSpreadRow,
+  body.contrib-mode #dataPanel { display: none !important; }
+
+
   .data-area {
     padding: 8px 12px;
     flex: 1;
@@ -451,11 +461,11 @@
       <div class="control-group">
         <div class="control-label">Point Size <span id="lblSize">4</span></div>
         <input type="range" id="ctrlSize" min="1" max="20" value="4">
-        <div class="control-label">Count <span id="lblCount">300</span></div>
+        <div class="control-label" id="lblCountRow">Count <span id="lblCount">300</span></div>
         <input type="range" id="ctrlCount" min="10" max="2000" value="300">
         <div class="control-label">Speed <span id="lblSpeed">1.0</span></div>
         <input type="range" id="ctrlSpeed" min="0" max="50" value="10">
-        <div class="control-label">Spread <span id="lblSpread">5.0</span></div>
+        <div class="control-label" id="lblSpreadRow">Spread <span id="lblSpread">5.0</span></div>
         <input type="range" id="ctrlSpread" min="1" max="20" value="10">
         <div class="control-label">ColorMode</div>
         <select id="ctrlColorMode">
@@ -476,7 +486,7 @@
     </div>
 
     <!-- Data -->
-    <div class="panel-section" style="flex:1; display:flex; flex-direction:column; min-height:0;">
+    <div class="panel-section" id="dataPanel" style="flex:1; display:flex; flex-direction:column; min-height:0;">
       <div class="panel-title">Data Input</div>
       <div class="data-area">
         <textarea id="dataInput" placeholder="Paste CSV, JSON array, or plain numbers...&#10;&#10;CSV: x,y,z per row&#10;JSON: [[x,y,z],...]&#10;Numbers: one per line"></textarea>
@@ -601,6 +611,7 @@ const DataViz3D = (() => {
     vizType: 'scatter3d',
     points: [],
     rawData: [],
+    contribMode: false, // true when GitHub contribution data is loaded
     rotX: 0.4,
     rotY: 0.3,
     rotZ: 0,
@@ -1822,6 +1833,8 @@ const DataViz3D = (() => {
   }
 
   function regenerate() {
+    // Never replace contribution data with generated data
+    if (state.contribMode) { return; }
     state.points = generateData(state.vizType, state.params.count, state.params.spread);
   }
 
@@ -1864,11 +1877,14 @@ const DataViz3D = (() => {
 
     // Load server-injected contribution data when available, else use demo data
     if (__CONFIG__ && __CONFIG__.points && __CONFIG__.points.length > 0) {
-      state.vizType = __CONFIG__.vizType || 'bars3d';
-      state.points  = __CONFIG__.points;
+      state.vizType    = __CONFIG__.vizType || 'bars3d';
+      state.points     = __CONFIG__.points;
+      state.contribMode = true; // lock dataset — prevents regenerate()
       state.autoRotate = __CONFIG__.autoRotate === true;
       if (__CONFIG__.rotX !== undefined) { state.rotX = __CONFIG__.rotX; }
       if (__CONFIG__.rotY !== undefined) { state.rotY = __CONFIG__.rotY; }
+      // Activate CSS hiding of data-manipulation controls
+      document.body.classList.add('contrib-mode');
       // Sync viz-type button highlight
       document.querySelectorAll('.viz-btn').forEach(b =>
         b.classList.toggle('active', b.dataset.viz === state.vizType)
